@@ -1,6 +1,13 @@
 # CNT4007Group32
--Make Handshake message and actual message & sending/checking Handshake and sending bitfield : Laura
+Midpoint
+----------------
+Laura: handshake message & actual message (length/payload/type), handshake & bitfield
+Joshua: interested/not interested
+Custer: request and piece
 
--interested and not interested : Josh
+-- just peers a and b for now --
 
--request and piece : Custer
+Later
+----------------
+Choke and Unchoke
+Log
