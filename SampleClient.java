@@ -12,7 +12,7 @@ public class SampleClient {
 	String message;                //message send to the server
 	String MESSAGE;                //capitalized message read from the server
 
-	public void Client() {}
+	public void SampleClient() {}
 
 	void run()
 	{
