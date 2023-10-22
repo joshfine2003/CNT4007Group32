@@ -37,7 +37,7 @@ public class Peer {
 
     private void startClient(int port) {
         try {
-            client = new Client(port, hostName, "hiii");
+            client = new Client(port, hostName);
         } catch (Exception e) {
             e.printStackTrace();
         }

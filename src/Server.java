@@ -27,8 +27,6 @@ public class Server {
      * loop and are responsible for dealing with a single client's requests.
      */
     private static class Handler extends Thread {
-        private String message; // message received from the client
-        private String MESSAGE; // uppercase message send to the client
         private Socket connection;
         private ObjectInputStream in; // stream read from the socket
         private ObjectOutputStream out; // stream write to the socket
@@ -48,13 +46,13 @@ public class Server {
                 try {
                     while (true) {
                         // receive the message sent from the client
-                        message = (String) in.readObject();
+                        Message message = new Message((byte[])in.readObject());
                         // show the message to the user
-                        System.out.println("Receive message: " + message + " from client " + no);
-                        // Capitalize all letters in the message
-                        MESSAGE = message.toUpperCase();
-                        // send MESSAGE back to the client
-                        sendMessage(MESSAGE);
+                        System.out.println("Received message from client " + no + "\n" + message + "\n");
+                        // respond with a have message (with payload)
+                        byte[] fake_message = {0, 0, 0, 3, 4, 43, 122, 15};
+                        Message reply = new Message(fake_message);
+                        sendMessage(reply);
                     }
                 } catch (ClassNotFoundException classnot) {
                     System.err.println("Data received in unknown format");
@@ -74,11 +72,11 @@ public class Server {
         }
 
         // send a message to the output stream
-        public void sendMessage(String msg) {
+        public void sendMessage(Message msg) {
             try {
-                out.writeObject(msg);
+                out.writeObject(msg.getBytes());
                 out.flush();
-                System.out.println("Send message: " + msg + " to Client " + no);
+                System.out.println("Sent message to client " + no + "\n" + msg + "\n");
             } catch (IOException ioException) {
                 ioException.printStackTrace();
             }

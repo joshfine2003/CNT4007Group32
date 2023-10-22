@@ -8,25 +8,23 @@ public class Client {
     Socket requestSocket; // socket connect to the server
     ObjectOutputStream out; // stream write to the socket
     ObjectInputStream in; // stream read from the socket
-    String message; // message send to the server
-    String MESSAGE; // capitalized message read from the server
 
     // template field? string for now
     // specific func for handler, bitfield
     // then close connections
 
     // send a message to the output stream
-    void sendMessage(String msg) {
+    void sendMessage(Message msg) {
         try {
             // stream write the message
-            out.writeObject(msg);
+            out.writeObject(msg.getBytes());
             out.flush();
         } catch (IOException ioException) {
             ioException.printStackTrace();
         }
     }
 
-    public Client(int port, String hostname, String message) {
+    public Client(int port, String hostname) {
         try {
             // create a socket to connect to the server
             System.out.println("Client trying to connect to " + port);
@@ -37,13 +35,12 @@ public class Client {
             out = new ObjectOutputStream(requestSocket.getOutputStream());
             out.flush();
             in = new ObjectInputStream(requestSocket.getInputStream());
-
-            // Send the sentence to the server
-            sendMessage(message);
-            // Receive the upperCase sentence from the server
-            MESSAGE = (String) in.readObject();
+            // Send an interested message to the server
+            sendMessage(new Message((byte)2));
+            // Receive the server's response
+            Message response = new Message((byte[])in.readObject());
             // show the message to the user
-            System.out.println("Receive message: " + MESSAGE);
+            System.out.println("Received message: \n" + response);
         } catch (ConnectException e) {
             e.printStackTrace();
             System.err.println("Connection refused. You need to initiate a server first.");
