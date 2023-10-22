@@ -44,14 +44,15 @@ public class Server {
                 out.flush();
                 in = new ObjectInputStream(connection.getInputStream());
                 try {
+                    
                     while (true) {
                         // receive the message sent from the client
                         Message message = new Message((byte[])in.readObject());
                         // show the message to the user
                         System.out.println("Received message from client " + no + "\n" + message + "\n");
                         // respond with a have message (with payload)
-                        byte[] fake_message = {0, 0, 0, 3, 4, 43, 122, 15};
-                        Message reply = new Message(fake_message);
+                        byte[] fake_reply = {0, 0, 0, 3, 4, 43, 122, 15};
+                        Message reply = new Message(fake_reply);
                         sendMessage(reply);
                     }
                 } catch (ClassNotFoundException classnot) {
