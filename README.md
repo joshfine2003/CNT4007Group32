@@ -1,20 +1,19 @@
-# CNT4007Group32
-Midpoint
+# CNT4007 Group 32
+This project implements a P2P file sharing software similar to BitTorrent in Java.
 
-----------------
+## Requirements
+- Java Development Kit (JDK)
 
-Laura: handshake message & actual message (length/payload/type), handshake & bitfield
+## Compilation
+```bash
+cd src
+javac peerProcess.java
+```
 
-Joshua: interested/not interested
-
-Custer: request and piece
-
--- just peers a and b for now --
-
-Later
-
-----------------
-
-Choke and Unchoke
-
-Log
+## Sample Execution
+```bash
+cd src
+java peerProcess 1001
+java peerProcess 1002
+java peerProcess 1003
+```
