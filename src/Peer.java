@@ -1,6 +1,8 @@
 import java.io.File; // Import the File class
 import java.io.FileNotFoundException; // Import this class to handle errors
 import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
 import java.util.Scanner; // Import the Scanner class to read text files
 
 public class Peer {
@@ -20,7 +22,7 @@ public class Peer {
     Boolean[] bitfield;
 
     Server server;
-    Client client;
+    Client client = new Client();
 
     private String parseStringFieldFromLine(String line) {
         String[] fields = line.split(" ");
@@ -35,9 +37,9 @@ public class Peer {
         }
     }
 
-    private Client startClient(int port) {
+    private Client startClient(int port, int serverPeerId) {
         try {
-            client = new Client(port, hostName, peerID);
+            client.ConnectToServer(serverPeerId, port, peerID);
             return client;
         } catch (Exception e) {
             e.printStackTrace();
@@ -84,8 +86,9 @@ public class Peer {
         // How do I check for this? Use peerIDs maybe (hardcoded?)
         // Handshake handshakeMsg = new Handshake(this.peerID);
         for (int i = this.peerID - 1; i > 1000; i--) {
-            final int peerIdCopy = i + 6000;
-            new Thread(() -> startClient(peerIdCopy)).start();
+            final int serverPeerId = i;
+            final int port = i + 6000;
+            new Thread(() -> startClient(port, serverPeerId)).start();
             // send handshake, bitfield to other peers
             // need public method within client to be able to send messages
             // pass bitfield into Client? then
