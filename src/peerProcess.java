@@ -5,6 +5,8 @@ import java.util.Scanner; // Import the Scanner class to read text files
 
 class peerProcess {
     public static void main(String[] args) {
+        //Load Common.cfg
+        ConfigHandler.updateCommon();
         // File IO code adapted from w3schools
         // https://www.w3schools.com/java/java_files_read.asp
         try {

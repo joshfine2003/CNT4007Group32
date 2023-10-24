@@ -12,22 +12,12 @@ public class Peer {
     int listeningPort;
     boolean hasFile;
 
-    int numberOfPreferredNeighbors;
-    int unchokingInterval;
-    int optimisticUnchokingInterval;
-    String fileName;
-    int fileSize;
-    int pieceSize;
-
     Boolean[] bitfield;
 
     Server server;
     Client client = new Client();
 
-    private String parseStringFieldFromLine(String line) {
-        String[] fields = line.split(" ");
-        return fields[1];
-    }
+    Logger logger;
 
     private void startServer(int listeningPort) {
         try {
@@ -54,31 +44,15 @@ public class Peer {
         this.listeningPort = listeningPort;
         this.hasFile = hasFile;
 
-        // File IO code adapted from w3schools
-        // https://www.w3schools.com/java/java_files_read.asp
-        try {
-            File common = new File("../project_config_file_small/Common.cfg");
-            Scanner myReader = new Scanner(common);
-
-            this.numberOfPreferredNeighbors = Integer.parseInt(parseStringFieldFromLine(myReader.nextLine()));
-            this.unchokingInterval = Integer.parseInt(parseStringFieldFromLine(myReader.nextLine()));
-            this.optimisticUnchokingInterval = Integer.parseInt(parseStringFieldFromLine(myReader.nextLine()));
-            this.fileName = parseStringFieldFromLine(myReader.nextLine());
-            this.fileSize = Integer.parseInt(parseStringFieldFromLine(myReader.nextLine()));
-            this.pieceSize = Integer.parseInt(parseStringFieldFromLine(myReader.nextLine()));
-
-            myReader.close();
-        } catch (FileNotFoundException e) {
-            System.out.println("An error occurred.");
-            e.printStackTrace();
-        }
-
-        this.bitfield = new Boolean[pieceSize];
+        this.bitfield = new Boolean[ConfigHandler.commonVars.pieceSize];
         if (hasFile) {
             Arrays.fill(bitfield, Boolean.TRUE);
         } else {
             Arrays.fill(bitfield, Boolean.FALSE);
         }
+
+        this.logger = new Logger(peerID);
+        logger.logDownloadCompleted(); // Just to demo how the logger is called
 
         // Start both server and client
         new Thread(() -> startServer(listeningPort)).start();
@@ -106,12 +80,12 @@ public class Peer {
                 "\n\tHost Name: " + this.hostName +
                 "\n\tListening Port: " + this.listeningPort +
                 "\n\tHas File: " + this.hasFile +
-                "\n\tNumber Of Preferred Neighbors: " + this.numberOfPreferredNeighbors +
-                "\n\tUnchoking Interval: " + this.unchokingInterval +
-                "\n\tOptimistic Unchoking Interval: " + this.optimisticUnchokingInterval +
-                "\n\tFile Name: " + this.fileName +
-                "\n\tFile Size: " + this.fileSize +
-                "\n\tPiece Size: " + this.pieceSize +
+                "\n\tNumber Of Preferred Neighbors: " + ConfigHandler.commonVars.numberOfPreferredNeighbors +
+                "\n\tUnchoking Interval: " + ConfigHandler.commonVars.unchokingInterval +
+                "\n\tOptimistic Unchoking Interval: " + ConfigHandler.commonVars.optimisticUnchokingInterval +
+                "\n\tFile Name: " + ConfigHandler.commonVars.fileName +
+                "\n\tFile Size: " + ConfigHandler.commonVars.fileSize +
+                "\n\tPiece Size: " + ConfigHandler.commonVars.pieceSize +
                 "\n\tBit Field (partial): " + Arrays.toString(partialBitField);
     }
 }
