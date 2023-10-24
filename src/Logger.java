@@ -8,9 +8,10 @@ public class Logger {
     private String filePath;
     private int peerID;
 
-    public Logger(int peerID, String filePath) {
+    public Logger(int peerID) {
         this.peerID = peerID;
-        this.filePath = filePath;
+        
+        this.filePath = "../logs/log_peer_" + String.valueOf(peerID) + ".log";
     }
 
     // File I/O adapted from w3schools

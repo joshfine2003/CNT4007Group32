@@ -15,6 +15,8 @@ public class Peer {
     Server server;
     Client client;
 
+    Logger logger;
+
     private void startServer(int listeningPort) {
         try {
             server = new Server(listeningPort, peerID);
@@ -46,6 +48,9 @@ public class Peer {
         } else {
             Arrays.fill(bitfield, Boolean.FALSE);
         }
+
+        this.logger = new Logger(peerID);
+        logger.logDownloadCompleted(); // Just to demo how the logger is called
 
         // Start both server and client
         new Thread(() -> startServer(listeningPort)).start();
