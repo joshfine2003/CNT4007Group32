@@ -16,7 +16,7 @@ public class Server {
         try {
             while (true) {
                 new Handler(listener.accept(), clientNum).start();
-                System.out.println("Client " + clientNum + " is connected!");
+                System.out.println("Client " + clientNum+peerID + " is connected!");
                 clientNum++;
             }
         } finally {
