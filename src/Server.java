@@ -15,8 +15,8 @@ public class Server {
         int clientNum = 1;
         try {
             while (true) {
-                new Handler(listener.accept(), clientNum).start();
-                System.out.println("Client " + clientNum+peerID + " is connected!");
+                new Handler(listener.accept(), clientNum, peerID).start();
+                System.out.println("Client " + (clientNum+peerID) + " is connected!");
                 clientNum++;
             }
         } finally {
@@ -33,10 +33,12 @@ public class Server {
         private ObjectInputStream in; // stream read from the socket
         private ObjectOutputStream out; // stream write to the socket
         private int no; // The index number of the client
+        private int peerID;
 
-        public Handler(Socket connection, int no) {
+        public Handler(Socket connection, int no, int peerID) {
             this.connection = connection;
             this.no = no;
+            this.peerID = peerID;
         }
 
         public void run() {
@@ -46,21 +48,16 @@ public class Server {
                 out.flush();
                 in = new ObjectInputStream(connection.getInputStream());
                 try {
-                    sendHandshake(new Handshake(no + 1000));
                     Handshake handshake = new Handshake((byte[])in.readObject());
-                    System.out.println("Received Handshake From Client");
-                    if(handshake.verify(1002)){
-                        System.out.println("Verified Handshake From Client");
+                    if(handshake.verify(no+peerID)){
+                        System.out.println("Verified Handshake From Client " + (no+peerID));
                     }
+                    sendHandshake(new Handshake(peerID));
                     while (true) {
                         // receive the message sent from the client
                         Message message = new Message((byte[])in.readObject());
                         // show the message to the user
                         System.out.println("Received message from client " + no + "\n" + message + "\n");
-                        // respond with a have message (with payload)
-                        byte[] fake_reply = {0, 0, 0, 3, 4, 43, 122, 15};
-                        Message reply = new Message(fake_reply);
-                        sendMessage(reply);
                     }
                 } catch (ClassNotFoundException classnot) {
                     System.err.println("Data received in unknown format");
@@ -93,7 +90,7 @@ public class Server {
             try {
                 out.writeObject(hsk.getBytes());
                 out.flush();
-                System.out.println("Sent Handshake to Client " + no);
+                System.out.println("Sent Handshake to Client " + (no+peerID));
             } catch (IOException ioException) {
                 ioException.printStackTrace();
             }

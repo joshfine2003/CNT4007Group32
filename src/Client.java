@@ -16,7 +16,6 @@ public class Client {
         }
     }
     Map<Integer, SocketTriple> sockets = new HashMap<Integer, SocketTriple>();
-    
     public void ConnectToServer(int serverPeerId, int port, int clientPeerId){
         try{
             System.out.println("Client " + clientPeerId + " trying to connect to port " + port);
@@ -27,12 +26,51 @@ public class Client {
             ObjectInputStream in = new ObjectInputStream(socket.getInputStream());
             SocketTriple trip = new SocketTriple(in, out, socket);
             sockets.put(serverPeerId, trip);
+            sendHandshake(new Handshake(clientPeerId), serverPeerId);
+            boolean loop = true;
+            while(loop){
+                Handshake handshake = new Handshake((byte[])in.readObject());
+                if(handshake.verify(serverPeerId)){
+                    loop=false;
+                }
+            }
+            System.out.println("Verified Handshake From Sever " + serverPeerId);
+            while (true) {
+                // receive a message sent from the server
+                Message message = new Message((byte[])in.readObject());
+                // show the message to the user
+                System.out.println("Received message from server " + serverPeerId + "\n" + message + "\n");
+            }
         }
         catch (ConnectException e) {
             e.printStackTrace();
             System.err.println("Connection refused. You need to initiate a server first.");
         } catch (UnknownHostException unknownHost) {
             System.err.println("You are trying to connect to an unknown host!");
+        } catch(ClassNotFoundException classNotFound){
+            System.err.println("Class Type is Not Found");
+        }catch (IOException ioException) {
+            ioException.printStackTrace();
+        }
+    }
+
+    public void sendHandshake(Handshake hsk, int peerId){
+        try {
+            ObjectOutputStream out = sockets.get(peerId).out;
+            out.writeObject(hsk.getBytes());
+            out.flush();
+            System.out.println("Sent Handshake to Server " + peerId);
+        } catch (IOException ioException) {
+            ioException.printStackTrace();
+        }
+    }
+
+    public void sendMessage(Message msg, int peerId) {
+        try {
+            ObjectOutputStream out = sockets.get(peerId).out;
+            out.writeObject(msg.getBytes());
+            out.flush();
+            System.out.println("Sent Message to Server " + peerId);
         } catch (IOException ioException) {
             ioException.printStackTrace();
         }
