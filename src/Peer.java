@@ -51,9 +51,6 @@ public class Peer {
             Arrays.fill(bitfield, Boolean.FALSE);
         }
 
-        this.logger = new Logger(peerID);
-        logger.logDownloadCompleted(); // Just to demo how the logger is called
-
         // Start both server and client
         new Thread(() -> startServer(listeningPort)).start();
         // Make connections with all peers that started before it
