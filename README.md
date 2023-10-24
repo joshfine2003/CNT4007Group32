@@ -17,3 +17,8 @@ java peerProcess 1001
 java peerProcess 1002
 java peerProcess 1003
 ```
+
+## Team Members
+- Laura Chang
+- Joshua Fine
+- Custer Gilchrest
