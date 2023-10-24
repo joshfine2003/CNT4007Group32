@@ -21,7 +21,7 @@ public class Message {
     //Changes message var and updates all variables appropriately
     public void setMessage(byte[] _message){
         byte[] lengthBits = {_message[0], _message[1], _message[2], _message[3]};
-        int messageLength = 5 + byteArrayToInt(lengthBits);
+        int messageLength = 5 + Helper.byteArrayToInt(lengthBits);
         message = new byte[messageLength];
         for(int i=0; i<messageLength; i++){
             //CJ: Should be i+5, no?
@@ -45,7 +45,7 @@ public class Message {
     //Updates length var based on message
     private void updateLength(){
         byte[] len = {message[0], message[1], message[2], message[3]};
-        length = byteArrayToInt(len);
+        length = Helper.byteArrayToInt(len);
     }
 
     //Updates payload var based on message
@@ -74,21 +74,6 @@ public class Message {
     //Returns byte[] message payload
     public byte[] getPayload(){
         return payload;
-    }
-
-    //Converts a 4 length byte array into an int
-    public static int byteArrayToInt(byte[] bytes){
-        return ((bytes[0] & 0xFF) << 24) | ((bytes[1] & 0xFF) << 16) | ((bytes[2] & 0xFF) << 8) | (bytes[3] & 0xFF);
-    }
-
-    //Convert an int into a 4 length byte array
-    public static byte[] intToByteArray(int num){
-        byte[] result = new byte[4];
-        result[0] = (byte)(num >> 24);
-        result[1] = (byte)(num >> 16);
-        result[2] = (byte)(num >> 8);
-        result[3] = (byte)num;
-        return result;
     }
 
     //toString method for debug

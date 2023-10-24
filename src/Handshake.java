@@ -21,7 +21,7 @@ public class Handshake {
         for(int i=0; i<18; i++){
             bytes[i] = headerBytes[i];
         }
-        byte[] idBytes = Message.intToByteArray(peerID);
+        byte[] idBytes = Helper.intToByteArray(peerID);
         for(int i=0; i<4; i++){
             bytes[i+28] = idBytes[i];
         }
@@ -33,7 +33,7 @@ public class Handshake {
         for(int i=0; i<4; i++){
             idBytes[i] = bytes[i+28];
         }
-        peerID = Message.byteArrayToInt(idBytes);
+        peerID = Helper.byteArrayToInt(idBytes);
     }
 
     //Returns the bytes
