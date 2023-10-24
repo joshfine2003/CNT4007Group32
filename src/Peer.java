@@ -29,17 +29,19 @@ public class Peer {
 
     private void startServer(int listeningPort) {
         try {
-            server = new Server(listeningPort);
+            server = new Server(listeningPort, peerID);
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    private void startClient(int port) {
+    private Client startClient(int port) {
         try {
-            client = new Client(port, hostName);
+            client = new Client(port, hostName, peerID);
+            return client;
         } catch (Exception e) {
             e.printStackTrace();
+            return null;
         }
     }
 

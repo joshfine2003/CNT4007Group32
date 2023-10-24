@@ -24,6 +24,7 @@ public class Message {
         int messageLength = 5 + byteArrayToInt(lengthBits);
         message = new byte[messageLength];
         for(int i=0; i<messageLength; i++){
+            //CJ: Should be i+5, no?
             message[i] = _message[i];
         }
         update();

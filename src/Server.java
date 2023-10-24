@@ -6,8 +6,10 @@ import java.util.*;
 
 public class Server {
     ServerSocket listener = null;;
+    int peerID = 0;
 
-    public Server(int sPort) throws Exception {
+    public Server(int sPort, int peerID) throws Exception {
+        this.peerID = peerID;
         System.out.println("The server is running on port " + sPort + ".");
         listener = new ServerSocket(sPort);
         int clientNum = 1;
@@ -44,7 +46,12 @@ public class Server {
                 out.flush();
                 in = new ObjectInputStream(connection.getInputStream());
                 try {
-                    
+                    sendHandshake(new Handshake(no + 1000));
+                    Handshake handshake = new Handshake((byte[])in.readObject());
+                    System.out.println("Received Handshake From Client");
+                    if(handshake.verify(1002)){
+                        System.out.println("Verified Handshake From Client");
+                    }
                     while (true) {
                         // receive the message sent from the client
                         Message message = new Message((byte[])in.readObject());
@@ -77,12 +84,20 @@ public class Server {
             try {
                 out.writeObject(msg.getBytes());
                 out.flush();
-                System.out.println("Sent message to client " + no + "\n" + msg + "\n");
+                System.out.println("Sent message to client " + no + "\n" + msg);
             } catch (IOException ioException) {
                 ioException.printStackTrace();
             }
         }
-
+        public void sendHandshake(Handshake hsk){
+            try {
+                out.writeObject(hsk.getBytes());
+                out.flush();
+                System.out.println("Sent Handshake to Client " + no);
+            } catch (IOException ioException) {
+                ioException.printStackTrace();
+            }
+        }
     }
 
 }

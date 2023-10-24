@@ -24,7 +24,17 @@ public class Client {
         }
     }
 
-    public Client(int port, String hostname) {
+    public void sendHandshake(Handshake hsk){
+        try{
+            out.writeObject(hsk.getBytes());
+            out.flush();
+        } catch(IOException ioException){
+            ioException.printStackTrace();
+        }
+
+    }
+
+    public Client(int port, String hostname, int peerID) {
         try {
             // create a socket to connect to the server
             System.out.println("Client trying to connect to " + port);
@@ -36,11 +46,14 @@ public class Client {
             out.flush();
             in = new ObjectInputStream(requestSocket.getInputStream());
             // Send an interested message to the server
-            sendMessage(new Message((byte)2));
+            sendHandshake(new Handshake(peerID));
             // Receive the server's response
-            Message response = new Message((byte[])in.readObject());
+            Handshake response = new Handshake((byte[])in.readObject());
             // show the message to the user
-            System.out.println("Received message: \n" + response);
+            System.out.println("Received Handshake From Server");
+            if(response.verify(1001)){
+                System.out.println("Verified Handshake From Server");
+            }
         } catch (ConnectException e) {
             e.printStackTrace();
             System.err.println("Connection refused. You need to initiate a server first.");
