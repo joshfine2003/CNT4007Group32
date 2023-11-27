@@ -18,13 +18,25 @@ public class Message {
         update();
     }
 
+    //Explicit contructor
+    public Message(int _length, byte _type, byte[] payload){
+        message = new byte[5+_length];
+        for(int i=0; i<4; i++){
+            message[i] = Helper.intToByteArray(_length)[i];
+        }
+        message[4] = _type;
+        for(int i=0; i<_length; i++){
+            message[i+5] = payload[i];
+        }
+        update();
+    }
+
     //Changes message var and updates all variables appropriately
     public void setMessage(byte[] _message){
         byte[] lengthBits = {_message[0], _message[1], _message[2], _message[3]};
         int messageLength = 5 + Helper.byteArrayToInt(lengthBits);
         message = new byte[messageLength];
         for(int i=0; i<messageLength; i++){
-            //CJ: Should be i+5, no?
             message[i] = _message[i];
         }
         update();
