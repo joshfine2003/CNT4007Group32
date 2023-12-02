@@ -2,6 +2,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.Scanner;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -19,16 +20,11 @@ public class PeerInfoHandler {
         }
     }
 
-    private static Map<Integer, PeerInfoVars> peerInfoMap = new HashMap<>(); // Useful for random addressing
-    private static List<Integer> peerIdList = new LinkedList<>(); // Ordered list of peerIDs, useful for getting previous peers (initial handshake setup)
+    private static Map<Integer, PeerInfoVars> peerInfoMap = new LinkedHashMap<>();
 
-    // Getters
+    // Getter
     public static Map<Integer, PeerInfoVars> getPeerInfoMap() {
         return peerInfoMap;
-    }
-
-    public static List<Integer> getPeerIdList() {
-        return peerIdList;
     }
 
     // Updates variables based on PeerInfo.cfg
@@ -60,7 +56,6 @@ public class PeerInfoHandler {
                         PeerInfoVars tempPeerInfoVars = new PeerInfoVars(tempHostName, tempListeningPort, tempHasFile);
 
                         peerInfoMap.put(tempPeerId, tempPeerInfoVars);
-                        peerIdList.add(tempPeerId);
 
                     } catch (ArrayIndexOutOfBoundsException e) {
                         System.out.println("Missing a field!");

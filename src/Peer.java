@@ -1,9 +1,18 @@
 import java.io.File; // Import the File class
 import java.io.FileNotFoundException; // Import this class to handle errors
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Scanner; // Import the Scanner class to read text files
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
+import java.util.logging.Handler;
 
 public class Peer {
     // ignoring encapsulation for now
@@ -14,35 +23,121 @@ public class Peer {
 
     Boolean[] bitfield;
 
-    Server server;
-    Client client = new Client();
-
     Logger logger;
 
-    private void startServer(int listeningPort) {
+    // public static List<PeerConnection> peerConnections;
+    public static Map<Integer, PeerConnection> peerConnections = new ConcurrentHashMap<>(); // attempt to make thread
+                                                                                            // safe
+
+    /**
+     * A handler thread class. Handlers are spawned from the listening
+     * loop and are responsible for dealing with a single client's requests.
+     */
+    private static class Handler extends Thread {
+        private Socket connection;
+        private int peerID;
+
+        public Handler(Socket connection, int peerID) {
+            this.connection = connection;
+            this.peerID = peerID;
+        }
+
+        private Integer getNextExpectedPeer() {
+            // Print out next expected incoming handshake
+            Boolean reachedSelf = false; // Should have already handshaked with all previous peers
+            for (Integer keyPeerID : PeerInfoHandler.getPeerInfoMap().keySet()) {
+                if (reachedSelf) {
+                    // Server expects the next handshake to come from the first peer ID where a
+                    // connection doesn't exist
+                    if (!peerConnections.containsKey(keyPeerID)) {
+                        System.out.println("Peer " + this.peerID + " waiting for connection from peer " + keyPeerID);
+                        return keyPeerID;
+                    }
+                }
+
+                if (keyPeerID == this.peerID) {
+                    reachedSelf = true;
+                }
+            }
+
+            return -1;
+        }
+
+        public void run() {
+            // Create PeerConnection and start send/receive threads
+            try {
+                ObjectOutputStream out = new ObjectOutputStream(connection.getOutputStream());
+                out.flush();
+                ObjectInputStream in = new ObjectInputStream(connection.getInputStream());
+
+                // Check handshake header and if peerID is the expected one
+                Handshake receivedHandshake = new Handshake((byte[]) in.readObject());
+                int expectedPeer = getNextExpectedPeer();
+                if (receivedHandshake.verify(expectedPeer)) {
+                    System.out.println("Verified Handshake From Client " + (expectedPeer));
+                } else {
+                    System.out.println("Handshake failed! Expected a handshake from peerID " + expectedPeer);
+                }
+
+                PeerConnection peerConnection = new PeerConnection(connection, out, in);
+
+                peerConnections.put(expectedPeer, peerConnection);
+                peerConnection.startThreads();
+
+                // enter while loop and will act as responder
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private void listen(ServerSocket serverSocket) {
         try {
-            server = new Server(listeningPort, peerID);
+            while (true) {
+                new Handler(serverSocket.accept(), this.peerID).start();
+            }
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void sendHandshakesToPreviousPeers() {
+        try {
+            while (true) {
+                // Iterate through peer info and send handshakes to previous peers
+                for (Integer keyPeerID : PeerInfoHandler.getPeerInfoMap().keySet()) {
+                    if (keyPeerID == this.peerID) {
+                        break;
+                    } else {
+                        Socket socket = new Socket("localhost", keyPeerID);
+                        PeerConnection tempPeerConnection = new PeerConnection(socket);
+
+                        peerConnections.put(keyPeerID, tempPeerConnection);
+                    }
+                }
+                TimeUnit.SECONDS.sleep(5);
+
+            }
+
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    private Client startClient(int port, int serverPeerId) {
-        try {
-            client.ConnectToServer(serverPeerId, port, peerID);
-            return client;
-        } catch (Exception e) {
-            e.printStackTrace();
-            return null;
-        }
+    private void loop() {
+
     }
 
     // Create a class constructor for the Main class
-    public Peer(int peerID, String hostName, int listeningPort, boolean hasFile) {
+    public Peer(int peerID) {
+        // Initialize class variables with arguments and peer info map
         this.peerID = peerID;
-        this.hostName = hostName;
-        this.listeningPort = listeningPort;
-        this.hasFile = hasFile;
+
+        PeerInfoHandler.PeerInfoVars peerInfo = PeerInfoHandler.getPeerInfoMap().get(this.peerID);
+        this.hostName = peerInfo.hostname;
+        this.listeningPort = peerInfo.port;
+        this.hasFile = peerInfo.hasFile;
 
         this.bitfield = new Boolean[ConfigHandler.commonVars.pieceSize];
         if (hasFile) {
@@ -51,20 +146,18 @@ public class Peer {
             Arrays.fill(bitfield, Boolean.FALSE);
         }
 
-        // Start both server and client
-        new Thread(() -> startServer(listeningPort)).start();
-        // Make connections with all peers that started before it
-        // How do I check for this? Use peerIDs maybe (hardcoded?)
-        // Handshake handshakeMsg = new Handshake(this.peerID);
-        for (int i = this.peerID - 1; i > 1000; i--) {
-            final int serverPeerId = i;
-            final int port = i + 6000;
-            new Thread(() -> startClient(port, serverPeerId)).start();
-            // send handshake, bitfield to other peers
-            // need public method within client to be able to send messages
-            // pass bitfield into Client? then
-        }
+        try {
+            // Start new server socket that listens on the correct port
+            ServerSocket serverSocket = new ServerSocket(this.listeningPort);
+            new Thread(() -> listen(serverSocket)).start(); // Thread constantly listens for new incoming new messages
 
+            sendHandshakesToPreviousPeers();
+            loop();
+
+            serverSocket.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     // Overriding toString() method of String class
