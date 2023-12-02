@@ -67,7 +67,8 @@ public class PeerConnection {
                 while (true) {
                     // Dequeue and send messages
                     Message messageToSend = messageQueue.take();
-                    sendMessage(messageToSend);
+                    out.writeObject(messageToSend.message);
+                    out.flush();
                 }
             } catch (Exception e) {
                 // Handle exceptions or exit the thread

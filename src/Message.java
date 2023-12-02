@@ -18,6 +18,11 @@ public class Message {
         update();
     }
 
+    // Quick and dirty hack to fit handshake into Message
+    public Message(byte[] _message, Boolean isHandshake){
+        this.message = _message;
+    }
+
     //Explicit contructor
     public Message(int _length, byte _type, byte[] payload){
         message = new byte[5+_length];

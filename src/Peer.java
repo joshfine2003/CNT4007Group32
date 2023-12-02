@@ -50,7 +50,6 @@ public class Peer {
                     // Server expects the next handshake to come from the first peer ID where a
                     // connection doesn't exist
                     if (!peerConnections.containsKey(keyPeerID)) {
-                        System.out.println("Peer " + this.peerID + " waiting for connection from peer " + keyPeerID);
                         return keyPeerID;
                     }
                 }
@@ -110,14 +109,19 @@ public class Peer {
                     if (keyPeerID == this.peerID) {
                         break;
                     } else {
-                        Socket socket = new Socket("localhost", keyPeerID);
+                        // Create socket for peer connection
+                        Socket socket = new Socket("localhost", PeerInfoHandler.getPeerInfoMap().get(keyPeerID).port);
                         PeerConnection tempPeerConnection = new PeerConnection(socket);
-
                         peerConnections.put(keyPeerID, tempPeerConnection);
+
+                        // Send handshake
+                        Handshake sendHandshake = new Handshake(this.peerID);
+                        Message handshakeMessage = new Message(sendHandshake.getBytes(), true);
+                        peerConnections.get(keyPeerID).sendMessage(handshakeMessage);
+                        tempPeerConnection.startThreads();
                     }
                 }
                 TimeUnit.SECONDS.sleep(5);
-
             }
 
         } catch (Exception e) {
