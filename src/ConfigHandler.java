@@ -10,6 +10,8 @@ public class ConfigHandler {
         public static String fileName;
         public static int fileSize;
         public static int pieceSize;
+        public static int numPieces;
+        public static int bitfieldSize;
     }
 
     //Updates variables based on Common.cfg
@@ -26,6 +28,9 @@ public class ConfigHandler {
             commonVars.fileName = Helper.parseStringFieldFromLine(myReader.nextLine());
             commonVars.fileSize = Integer.parseInt(Helper.parseStringFieldFromLine(myReader.nextLine()));
             commonVars.pieceSize = Integer.parseInt(Helper.parseStringFieldFromLine(myReader.nextLine()));
+
+            commonVars.numPieces = (int)Math.ceil((double)commonVars.fileSize/commonVars.pieceSize);
+            commonVars.bitfieldSize = commonVars.numPieces + (8-commonVars.numPieces%8); //numPieces rounded up to the nearest multiple of 8 (in bits)
 
             myReader.close();
         } catch (FileNotFoundException e) {

@@ -7,6 +7,8 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.BitSet;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Scanner; // Import the Scanner class to read text files
@@ -21,13 +23,17 @@ public class Peer {
     int listeningPort;
     boolean hasFile;
 
-    Boolean[] bitfield;
-
     Logger logger;
 
     // public static List<PeerConnection> peerConnections;
-    public static Map<Integer, PeerConnection> peerConnections = new ConcurrentHashMap<>(); // attempt to make thread
+    public static Map<Integer, PeerConnection> peerConnections = new ConcurrentHashMap<>(); // attempt to make thread //
                                                                                             // safe
+
+    public static Map<Integer, BitSet> bitfieldMap = new ConcurrentHashMap<>(); // Keeps track of known bitmaps of other
+                                                                                // peers
+    public static Map<Integer, Boolean> interestedMap = new ConcurrentHashMap<>(); // Keeps track of what peers are
+                                                                                   // interested in me
+    public static Map<Integer, Boolean> chokedMap = new ConcurrentHashMap<>(); // Keeps track of what peers are choked
 
     /**
      * A handler thread class. Handlers are spawned from the listening
@@ -78,12 +84,10 @@ public class Peer {
                     System.out.println("Handshake failed! Expected a handshake from peerID " + expectedPeer);
                 }
 
-                PeerConnection peerConnection = new PeerConnection(connection, out, in);
+                PeerConnection peerConnection = new PeerConnection(connection, out, in, this.peerID, expectedPeer);
 
                 peerConnections.put(expectedPeer, peerConnection);
                 peerConnection.startThreads();
-
-                // enter while loop and will act as responder
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -103,25 +107,24 @@ public class Peer {
 
     private void sendHandshakesToPreviousPeers() {
         try {
-            while (true) {
-                // Iterate through peer info and send handshakes to previous peers
-                for (Integer keyPeerID : PeerInfoHandler.getPeerInfoMap().keySet()) {
-                    if (keyPeerID == this.peerID) {
-                        break;
-                    } else {
-                        // Create socket for peer connection
-                        Socket socket = new Socket("localhost", PeerInfoHandler.getPeerInfoMap().get(keyPeerID).port);
-                        PeerConnection tempPeerConnection = new PeerConnection(socket);
-                        peerConnections.put(keyPeerID, tempPeerConnection);
+            // Iterate through peer info and send handshakes to previous peers
+            for (Integer keyPeerID : PeerInfoHandler.getPeerInfoMap().keySet()) {
+                if (keyPeerID == this.peerID) {
+                    break;
+                } else {
+                    // Create socket for peer connection
+                    PeerInfoHandler.PeerInfoVars linkedPeerInfo = PeerInfoHandler.getPeerInfoMap().get(keyPeerID);
+                    Socket socket = new Socket(linkedPeerInfo.hostname, linkedPeerInfo.port);
+                    PeerConnection tempPeerConnection = new PeerConnection(socket, this.peerID, keyPeerID);
+                    peerConnections.put(keyPeerID, tempPeerConnection);
 
-                        // Send handshake
-                        Handshake sendHandshake = new Handshake(this.peerID);
-                        Message handshakeMessage = new Message(sendHandshake.getBytes(), true);
-                        peerConnections.get(keyPeerID).sendMessage(handshakeMessage);
-                        tempPeerConnection.startThreads();
-                    }
+                    // Send handshake
+                    Handshake sendHandshake = new Handshake(this.peerID);
+                    Message handshakeMessage = new Message(sendHandshake.getBytes(), true);
+                    peerConnections.get(keyPeerID).sendMessage(handshakeMessage);
+                    tempPeerConnection.startThreads();
+
                 }
-                TimeUnit.SECONDS.sleep(5);
             }
 
         } catch (Exception e) {
@@ -130,7 +133,9 @@ public class Peer {
     }
 
     private void loop() {
+        while (true) {
 
+        }
     }
 
     // Create a class constructor for the Main class
@@ -143,12 +148,24 @@ public class Peer {
         this.listeningPort = peerInfo.port;
         this.hasFile = peerInfo.hasFile;
 
-        this.bitfield = new Boolean[ConfigHandler.commonVars.pieceSize];
+        int bitSetSize = ConfigHandler.commonVars.bitfieldSize;
+        // System.out.println("BIT FIELD SIZE " + bitSetSize);
+        BitSet tempBitSet = new BitSet(bitSetSize);
         if (hasFile) {
-            Arrays.fill(bitfield, Boolean.TRUE);
+            tempBitSet.set(0, ConfigHandler.commonVars.numPieces);
         } else {
-            Arrays.fill(bitfield, Boolean.FALSE);
+            tempBitSet.clear(0, ConfigHandler.commonVars.numPieces);
         }
+        bitfieldMap.put(this.peerID, tempBitSet);
+        
+        // byte[] printBitset = Helper.bitsetToByteArray(tempBitSet);
+
+        // System.out.println("Bitset: " + printBitset);
+        // for (byte b : printBitset) {
+        //     System.out.println(b);
+        // }
+        // System.out.println(Helper.byteArrayToInt(printBitset));
+        // System.out.println(tempBitSet);
 
         try {
             // Start new server socket that listens on the correct port
@@ -168,8 +185,6 @@ public class Peer {
     @Override
     public String toString() {
         // Create a new array containing the specified range of elements
-        Boolean[] partialBitField = Arrays.copyOfRange(bitfield, 0, 5);
-
         return "\tPeer ID: " + this.peerID +
                 "\n\tHost Name: " + this.hostName +
                 "\n\tListening Port: " + this.listeningPort +
@@ -179,7 +194,7 @@ public class Peer {
                 "\n\tOptimistic Unchoking Interval: " + ConfigHandler.commonVars.optimisticUnchokingInterval +
                 "\n\tFile Name: " + ConfigHandler.commonVars.fileName +
                 "\n\tFile Size: " + ConfigHandler.commonVars.fileSize +
-                "\n\tPiece Size: " + ConfigHandler.commonVars.pieceSize +
-                "\n\tBit Field (partial): " + Arrays.toString(partialBitField);
+                "\n\tPiece Size: " + ConfigHandler.commonVars.pieceSize;// +
+                // "\n\tBit Field (partial): " + Arrays.toString(partialBitField);
     }
 }
