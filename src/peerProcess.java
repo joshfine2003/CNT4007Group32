@@ -15,7 +15,8 @@ class peerProcess {
         // If provided argument is present in peer info map, initialize a peer
         int peerID = Integer.valueOf(args[0]);
         if (PeerInfoHandler.getPeerInfoMap().containsKey(peerID)) {
-            Peer peer = new Peer(peerID);
+            Logger.deleteLog(peerID); // Delete the log
+            Peer peer = new Peer(peerID); // Start the peer
         } else {
             System.out.println("Peer ID not present in configuration!");
         }
