@@ -87,7 +87,7 @@ public class Logger {
 
     // Log when peer receives a 'have' message
     public static void logReceivedHave(int peerID, int neighborID, int pieceIndex) {
-        String message = "received the 'have' message from" + neighborID + "for the piece " + pieceIndex + ".";
+        String message = "received the 'have' message from " + neighborID + "for the piece " + pieceIndex + ".";
         writeLog(peerID, message);
     }
 
@@ -105,7 +105,7 @@ public class Logger {
 
     // Log when peer finishes downloading a piece
     public static void logDownloadedPiece(int peerID, int neighborID, int pieceIndex, int numPieces) {
-        String message = "has downloaded the piece " +  pieceIndex + "from " + neighborID + ". Now the number of pieces it has is " + numPieces + ".";
+        String message = "has downloaded the piece " +  pieceIndex + " from " + neighborID + ". Now the number of pieces it has is " + numPieces + ".";
         writeLog(peerID, message);
     }
 

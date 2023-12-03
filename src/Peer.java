@@ -26,7 +26,7 @@ public class Peer {
     String hostName;
     int listeningPort;
     boolean hasFile;
-    
+
     public static int optimisticNeighbor = 0;
 
     Logger logger;
@@ -91,6 +91,7 @@ public class Peer {
                 Handshake receivedHandshake = new Handshake((byte[]) in.readObject());
                 int expectedPeer = getNextExpectedPeer();
                 if (receivedHandshake.verify(expectedPeer)) {
+                    Logger.logTcpConnectionFrom(this.peerID, expectedPeer);
                     System.out.println("Verified Handshake From Client " + (expectedPeer));
                     downloadMap.put(expectedPeer, 0);
                 } else {
@@ -101,7 +102,13 @@ public class Peer {
 
                 peerConnections.put(expectedPeer, peerConnection);
                 chokedMap.put(expectedPeer, true); // Mark all neighbors initially as choked
-                isInterestedMap.put(expectedPeer, false);
+                isInterestedMap.put(expectedPeer, false); // Mark all neighbors initially as uninterested
+
+                // Mark neighbor initially as having no bitfield
+                BitSet tempBitSet = new BitSet(ConfigHandler.commonVars.bitfieldSize);
+                tempBitSet.clear(0, ConfigHandler.commonVars.numPieces);
+                bitfieldMap.put(expectedPeer, tempBitSet);
+
                 peerConnection.startThreads();
             } catch (Exception e) {
                 e.printStackTrace();
@@ -135,9 +142,15 @@ public class Peer {
                     chokedMap.put(keyPeerID, true); // Mark all neighbors initially as choked
                     isInterestedMap.put(keyPeerID, true); // Mark all neighbors initially as uninterested
 
+                    // Mark neighbor initially as having no bitfield
+                    BitSet tempBitSet = new BitSet(ConfigHandler.commonVars.bitfieldSize);
+                    tempBitSet.clear(0, ConfigHandler.commonVars.numPieces);
+                    bitfieldMap.put(keyPeerID, tempBitSet);
+
                     // Send handshake
                     Handshake sendHandshake = new Handshake(this.peerID);
                     Message handshakeMessage = new Message(sendHandshake.getBytes(), true);
+                    Logger.logTcpConnectionTo(keyPeerID, this.peerID);
                     peerConnections.get(keyPeerID).sendMessage(handshakeMessage);
                     tempPeerConnection.startThreads();
 
@@ -160,17 +173,17 @@ public class Peer {
             long currentTime0 = System.currentTimeMillis();
             long currentTime = System.currentTimeMillis();
 
-            //Optimistic Unchoking
-            if(currentTime0 - lastMessageTime0 >= messageInterval0){
+            // Optimistic Unchoking
+            if (currentTime0 - lastMessageTime0 >= messageInterval0) {
                 List<Integer> chokedInterested = new ArrayList<>();
-                for(int i : chokedMap.keySet()){
-                    //Find all interested peers that are choked
-                    if(chokedMap.get(i) && isInterestedMap.get(i)){
+                for (int i : chokedMap.keySet()) {
+                    // Find all interested peers that are choked
+                    if (chokedMap.get(i) && isInterestedMap.get(i)) {
                         chokedInterested.add(i);
                     }
                 }
-                //Pick a random peer in choked and interested to unchoke
-                if(chokedInterested.size() >= 1){
+                // Pick a random peer in choked and interested to unchoke
+                if (chokedInterested.size() >= 1) {
                     int randNum = ThreadLocalRandom.current().nextInt(0, chokedInterested.size());
                     optimisticNeighbor = chokedInterested.get(randNum);
                     chokedMap.put(optimisticNeighbor, false);
@@ -186,12 +199,12 @@ public class Peer {
                 List<Integer> randomKeys = new ArrayList<>(downloadMap.keySet());
                 Collections.shuffle(randomKeys);
                 Map<Integer, Integer> downloadMapRand = new ConcurrentHashMap<>();
-                for(int i = 0; i < randomKeys.size(); i++){
+                for (int i = 0; i < randomKeys.size(); i++) {
                     downloadMapRand.put(randomKeys.get(i), downloadMap.get(randomKeys.get(i)));
                 }
                 // Find the preferred top neighbors
-                for(int i = 0; i < ConfigHandler.commonVars.numberOfPreferredNeighbors; i++){
-                    
+                for (int i = 0; i < ConfigHandler.commonVars.numberOfPreferredNeighbors; i++) {
+
                     int currKey = Collections.max(downloadMapRand.entrySet(), Map.Entry.comparingByValue()).getKey();
                     downloadMapRand.put(currKey, 0);
                     prefNeighbors.add(currKey);
@@ -199,25 +212,25 @@ public class Peer {
                 Integer[] log = prefNeighbors.toArray(new Integer[0]);
                 Logger.logChangePreferredNeighbors(peerID, log);
                 // Flush the download map
-                for(int i : downloadMap.keySet()){
-                    downloadMap.put(i,0);
+                for (int i : downloadMap.keySet()) {
+                    downloadMap.put(i, 0);
                 }
                 // If preferred neighbors are choked, send an unchoke message
-                for(int i = 0; i < prefNeighbors.size(); i++){
-                    if(chokedMap.get(prefNeighbors.get(i))){
+                for (int i = 0; i < prefNeighbors.size(); i++) {
+                    if (chokedMap.get(prefNeighbors.get(i))) {
                         chokedMap.put(prefNeighbors.get(i), false);
                         peerConnections.get(prefNeighbors.get(i)).sendMessage(new Message((byte) 1));
                     }
                 }
-                for(int j : chokedMap.keySet()){
-                    if(!chokedMap.get(j)){
+                for (int j : chokedMap.keySet()) {
+                    if (!chokedMap.get(j)) {
                         boolean safe = false;
-                        for(int k = 0; k < prefNeighbors.size(); k++){
-                            if(j == prefNeighbors.get(k) || j == optimisticNeighbor){
+                        for (int k = 0; k < prefNeighbors.size(); k++) {
+                            if (j == prefNeighbors.get(k) || j == optimisticNeighbor) {
                                 safe = true;
                             }
                         }
-                        if(!safe){
+                        if (!safe) {
                             chokedMap.put(j, true);
                             peerConnections.get(j).sendMessage(new Message((byte) 0));
                         }

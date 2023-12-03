@@ -68,21 +68,28 @@ public class MessageHandler {
         return null;
     }
 
-    //Handles cases where an unchoke message was received
+    //Handles cases where an unchoke message was received (need to form a request message)
     private static byte[] handleUnchoke(int self, int neighbor){
         byte[] result = new byte[9];
-        result[3] = 4;
-        result[4] = 6;
+        result[3] = 4; // Message length field
+        result[4] = 6; // Message type (request)
+
         BitSet selfBitfield = Peer.bitfieldMap.get(self);
         BitSet neighborBitfield = Peer.bitfieldMap.get(neighbor);
-        int[] newBits = Helper.detectNewBits(selfBitfield, neighborBitfield);
+        int[] newBits = Helper.detectNewBits(selfBitfield, neighborBitfield); // Get bit indices that the neighbor peer has which self doesn't have
+
         Random rand = new Random();
-        int randomIndex = rand.nextInt(newBits.length);
-        byte[] index = Helper.intToByteArray(newBits[randomIndex]);
-        for(int i=5; i<9; i++){
-            result[i] = index[i-5];
+        // Randomly select from newBits and put index into message
+        if(newBits.length > 0){
+            int randomIndex = rand.nextInt(newBits.length);
+            byte[] index = Helper.intToByteArray(newBits[randomIndex]);
+            for(int i=5; i<9; i++){
+                result[i] = index[i-5];
+            }
+            return result;
+        }else{
+            return null; // No more new bits to get
         }
-        return result;
     }
 
     // Handles cases where an interested message was received
@@ -114,9 +121,6 @@ public class MessageHandler {
 
     // Handles cases where a bitfield message was received
     private static byte[] handleBitfield(int self, int neighbor, byte[] payload) {
-        // Bitfields are handled in peer logic
-        // put bitfield in peer
-
         // Save neighbor's bitfield information to peer
         BitSet neighborBitfield = BitSet.valueOf(payload);
         Peer.bitfieldMap.put(neighbor, neighborBitfield);

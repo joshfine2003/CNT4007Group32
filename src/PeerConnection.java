@@ -105,11 +105,10 @@ public class PeerConnection {
                 e.printStackTrace();
             }
         });
+        sendBitField();
 
         // Start the threads
         receiveThread.start();
         sendThread.start();
-
-        sendBitField();
     }
 }
