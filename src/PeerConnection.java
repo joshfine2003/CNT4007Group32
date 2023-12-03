@@ -71,9 +71,16 @@ public class PeerConnection {
 
                     // Handle the received message as needed
                     byte[] replyMessage = MessageHandler.handle(receivedMessage.getBytes(), selfPeerID, linkedPeerID);
-
+                    
                     System.out.println("Received message: " + receivedMessage);
 
+                    if(receivedMessage.type == 7){
+                        for(Integer i : Peer.peerConnections.keySet()){
+                            byte[] havePayload = {receivedMessage.payload[0],receivedMessage.payload[1],receivedMessage.payload[2],receivedMessage.payload[3]};
+                            Peer.peerConnections.get(i).sendMessage(new Message(4,(byte)4,havePayload));
+                        }
+                    }
+                    
                     if (replyMessage != null) {
                         sendMessage(new Message(replyMessage));
                     }

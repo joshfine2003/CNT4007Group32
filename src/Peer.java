@@ -17,6 +17,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Handler;
 import java.util.Collections;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.Iterator;
+import java.util.Set;
 
 public class Peer {
     // ignoring encapsulation for now
@@ -99,6 +101,7 @@ public class Peer {
 
                 peerConnections.put(expectedPeer, peerConnection);
                 chokedMap.put(expectedPeer, true); // Mark all neighbors initially as choked
+                isInterestedMap.put(expectedPeer, false);
                 peerConnection.startThreads();
             } catch (Exception e) {
                 e.printStackTrace();
@@ -130,6 +133,7 @@ public class Peer {
                     PeerConnection tempPeerConnection = new PeerConnection(socket, this.peerID, keyPeerID);
                     peerConnections.put(keyPeerID, tempPeerConnection);
                     chokedMap.put(keyPeerID, true); // Mark all neighbors initially as choked
+                    isInterestedMap.put(keyPeerID, true); // Mark all neighbors initially as uninterested
 
                     // Send handshake
                     Handshake sendHandshake = new Handshake(this.peerID);
@@ -170,7 +174,8 @@ public class Peer {
                     int randNum = ThreadLocalRandom.current().nextInt(0, chokedInterested.size());
                     optimisticNeighbor = chokedInterested.get(randNum);
                     chokedMap.put(optimisticNeighbor, false);
-                    peerConnections.get(chokedInterested.get(randNum)).sendMessage(new Message((byte) 1));
+                    peerConnections.get(optimisticNeighbor).sendMessage(new Message((byte) 1));
+                    Logger.logChangeOptimisticallyUnchoked(peerID, optimisticNeighbor);
                     lastMessageTime0 = currentTime0;
                 }
             }
@@ -178,13 +183,21 @@ public class Peer {
             // If unchoking interval has passed, iterate through interested peers
             if (currentTime - lastMessageTime >= messageInterval) {
                 List<Integer> prefNeighbors = new ArrayList<>();
-
+                List<Integer> randomKeys = new ArrayList<>(downloadMap.keySet());
+                Collections.shuffle(randomKeys);
+                Map<Integer, Integer> downloadMapRand = new ConcurrentHashMap<>();
+                for(int i = 0; i < randomKeys.size(); i++){
+                    downloadMapRand.put(randomKeys.get(i), downloadMap.get(randomKeys.get(i)));
+                }
                 // Find the preferred top neighbors
                 for(int i = 0; i < ConfigHandler.commonVars.numberOfPreferredNeighbors; i++){
-                    int currKey = Collections.max(downloadMap.entrySet(), Map.Entry.comparingByValue()).getKey();
-                    downloadMap.put(currKey, 0);
+                    
+                    int currKey = Collections.max(downloadMapRand.entrySet(), Map.Entry.comparingByValue()).getKey();
+                    downloadMapRand.put(currKey, 0);
                     prefNeighbors.add(currKey);
                 }
+                Integer[] log = prefNeighbors.toArray(new Integer[0]);
+                Logger.logChangePreferredNeighbors(peerID, log);
                 // Flush the download map
                 for(int i : downloadMap.keySet()){
                     downloadMap.put(i,0);

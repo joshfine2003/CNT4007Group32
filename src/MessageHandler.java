@@ -34,12 +34,16 @@ public class MessageHandler {
 
             case 6: // Request
                 byte[] pieceIndex = {payload[0], payload[1], payload[2], payload[3]};
-                return handleRequest(neighborPeerID, Helper.byteArrayToInt(pieceIndex));
+                return handleRequest(selfPeerID, neighborPeerID, Helper.byteArrayToInt(pieceIndex));
 
             case 7: //Piece
                 byte[] indexP = {payload[0], payload[1], payload[2], payload[3]};
                 int pieceIndexP = Helper.byteArrayToInt(indexP);
-                //TODO: DOWNLOAD PIECE
+                byte[] pieceContent = new byte[message.length-4];
+                for(int i=0; i<pieceContent.length; i++){
+                    pieceContent[i] = payload[i+4];
+                }
+                Helper.writePieceToFile(Peer.bitfieldMap.get(selfPeerID), pieceIndexP, selfPeerID, pieceContent);
                 Peer.bitfieldMap.get(selfPeerID).set(pieceIndexP, true);
                 int pieceCount = 0;
                 for(int i=0; i<ConfigHandler.commonVars.numPieces; i++){
@@ -136,10 +140,18 @@ public class MessageHandler {
     }
 
     // Handles cases where a request message was received
-    private static byte[] handleRequest(int neighbor, int neededPiece) {
-        // This should reply with the actual piece, not an empty piece message
+    private static byte[] handleRequest(int selfPeerID, int neighbor, int neededPiece) {
         Peer.downloadMap.put(neighbor, Peer.downloadMap.get(neighbor) + 1);
-        return (new Message((byte) 7)).getBytes();
+        byte[] pieceContent = Helper.readPieceFromFile(Peer.bitfieldMap.get(selfPeerID), neededPiece, selfPeerID);
+        byte[] payload = new byte[4+pieceContent.length];
+        byte[] pieceIndexBytes = Helper.intToByteArray(neededPiece);
+        for(int i=0; i<4; i++){
+            payload[i] = pieceIndexBytes[i];
+        }
+        for(int i=0; i<pieceContent.length; i++){
+            payload[i+4] = pieceContent[i];
+        }
+        return (new Message(payload.length, (byte)7, payload)).getBytes();
     }
 
     // Handles cases where a piece message was received
@@ -149,11 +161,15 @@ public class MessageHandler {
         result[4] = 6;
         int[] newBits = Helper.detectNewBits(Peer.bitfieldMap.get(selfPeerID), Peer.bitfieldMap.get(neighborPeerID));
         Random rand = new Random();
-        int randomIndex = rand.nextInt(newBits.length);
-        byte[] index = Helper.intToByteArray(newBits[randomIndex]);
-        for(int i=5; i<9; i++){
-            result[i] = index[i-5];
+        if(newBits.length > 0){
+            int randomIndex = rand.nextInt(newBits.length);
+            byte[] index = Helper.intToByteArray(newBits[randomIndex]);
+            for(int i=5; i<9; i++){
+                result[i] = index[i-5];
+            }
+            return result;
+        }else{
+            return null; // No more new bits to get
         }
-        return result;
     }
 }

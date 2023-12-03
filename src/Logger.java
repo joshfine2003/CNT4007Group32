@@ -31,15 +31,8 @@ public class Logger {
     // https://www.w3schools.com/java/java_files_delete.asp
     // Delete log file
     public static void deleteLog(int peer) {
-        try {
-            File myObj = new File("../logs/log_peer_" + String.valueOf(peer) + ".log");
-            if (myObj.exists()) {
-                myObj.delete();
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
+        String fileToDelete = "../logs/log_peer_" + String.valueOf(peer) + ".log";
+        Helper.deleteFile(fileToDelete);
     }
 
     // Log when peer makes a TCP connection to other peer
@@ -55,7 +48,7 @@ public class Logger {
     }
 
     // Log when peer changes its preferred neighbors
-    public static void logChangePreferredNeighbors(int peerID, int[] preferredNeighbors) {
+    public static void logChangePreferredNeighbors(int peerID, Integer[] preferredNeighbors) {
 
         StringBuilder stringBuilder = new StringBuilder();
 
@@ -75,7 +68,7 @@ public class Logger {
     }
 
     // Log when peer changes its optimistically unchoked neighbor
-    public static void logChangeOptimisticallyUnchocked(int peerID, int neighborID) {
+    public static void logChangeOptimisticallyUnchoked(int peerID, int neighborID) {
         String message = "has the optimistically unchoked neighbor [" + neighborID + "].";
         writeLog(peerID, message);
     }

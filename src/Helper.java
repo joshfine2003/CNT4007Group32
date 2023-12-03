@@ -2,6 +2,8 @@
 
 import java.util.ArrayList;
 import java.util.BitSet;
+import java.io.*;
+import java.nio.file.*;
 
 public class Helper {
 
@@ -48,12 +50,102 @@ public class Helper {
         return result;
     }
 
-    public static byte[] readPieceFromFile(BitSet bitfield, int pieceIndex){
-        
-        return null;
+    // Delete code adapted from w3schools
+    // https://www.w3schools.com/java/java_files_delete.asp
+    // Delete log file
+    public static void deleteFile(String fileName) {
+        try {
+            File myObj = new File(fileName);
+            if (myObj.exists()) {
+                myObj.delete();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
     }
 
+    public static byte[] fileToByteArray(File f){
+        try {
+            FileInputStream fis = new FileInputStream(f);
+            byte[] result = new byte[(int)f.length()];
+            fis.read(result);
+            fis.close();
+            return result;
+        } catch (Exception e) {
+            System.out.println(e);
+            return null;
+        }
+    }
+
+    public static boolean bitfieldIsCompleted(BitSet b){
+        for(int i=0; i<ConfigHandler.commonVars.numPieces; i++){
+            if(b.get(i) == false){
+                return false;
+            }
+        }
+        return true;
+    }
+
+    //Reads the given pieceIndex from the file and returns the piece content
+    public static byte[] readPieceFromFile(BitSet bitfield, int pieceIndex, int selfPeerID){
+        byte[] pieceData = new byte[ConfigHandler.commonVars.pieceSize];
+        int startByteIndex = 0;
+
+        // Find spot in file to read
+        // Increment start byte index by all previous pieces
+        for(int i=0; i<pieceIndex; i++){
+            if(bitfield.get(i)==true){
+                startByteIndex += ConfigHandler.commonVars.pieceSize;
+            }
+        }
+        //TODO: CHANGE PATH FOR FINAL VERSION
+        try {
+            File peerFile = new File("../project_config_file_small/" + selfPeerID + "/thefile");
+            byte[] fileContent = fileToByteArray(peerFile);
+            // Iteratively get bytes until get entire piece or reach end of file
+            for(int i=startByteIndex; i < (ConfigHandler.commonVars.pieceSize + startByteIndex) && i<fileContent.length; i++){
+                pieceData[i-startByteIndex] = fileContent[i]; // Get byte from file and insert into pieceData (starting from index 0)
+            }
+
+        } catch (Exception e) {
+            System.out.println(e);
+        }
+        return pieceData;
+    }
+
+    //Writes the given piececontent to the given pieceIndex in the file
     public static void writePieceToFile(BitSet bitfield, int pieceIndex, int selfPeerID, byte[] pieceContent){
-        
+        //Check if last piece, if so use size of last piece instead
+        int startByteIndex = 0;
+        for(int i=0; i<pieceIndex; i++){
+            if(bitfield.get(i)==true){
+                startByteIndex += ConfigHandler.commonVars.pieceSize;
+            }
+        }
+        try {
+            Files.createDirectories(Paths.get("../project_config_file_small/" + selfPeerID));
+            File peerFile = new File("../project_config_file_small/" + selfPeerID + "/thefile");
+            peerFile.createNewFile();
+            int contentLength = pieceContent.length;
+            if(pieceIndex == ConfigHandler.commonVars.numPieces-1){
+                contentLength = ConfigHandler.commonVars.sizeOfLastPiece;
+            }
+            byte[] fileContent = fileToByteArray(peerFile);
+            byte[] newFileContent = new byte[fileContent.length+contentLength];
+            for(int i=0; i<startByteIndex; i++){
+                newFileContent[i] = fileContent[i];
+            }
+            for(int i=0; i<contentLength; i++){
+                newFileContent[i+startByteIndex] = pieceContent[i];
+            }
+            for(int i=startByteIndex+contentLength; i<newFileContent.length; i++){
+                newFileContent[i] = fileContent[i-contentLength];
+            }
+            Files.write(Paths.get("../project_config_file_small/" + selfPeerID + "/thefile"), newFileContent);
+
+        } catch (Exception e) {
+            System.out.println(e);
+        }
     }
 }
