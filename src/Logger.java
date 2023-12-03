@@ -87,7 +87,7 @@ public class Logger {
 
     // Log when peer receives a 'have' message
     public static void logReceivedHave(int peerID, int neighborID, int pieceIndex) {
-        String message = "received the 'have' message from " + neighborID + "for the piece " + pieceIndex + ".";
+        String message = "received the 'have' message from " + neighborID + " for the piece " + pieceIndex + ".";
         writeLog(peerID, message);
     }
 

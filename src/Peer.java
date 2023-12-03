@@ -47,6 +47,10 @@ public class Peer {
 
     public static Map<Integer, Integer> downloadMap = new ConcurrentHashMap<>();
 
+    public static Map<Integer, Long> lastRequestMap = new ConcurrentHashMap<>(); // Keeps track of last time a file was requested
+
+    public static long requestTimeout = 4000; //Request timeout in milliseconds
+
     /**
      * A handler thread class. Handlers are spawned from the listening
      * loop and are responsible for dealing with a single client's requests.

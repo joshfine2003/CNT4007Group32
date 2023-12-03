@@ -86,6 +86,7 @@ public class MessageHandler {
             for(int i=5; i<9; i++){
                 result[i] = index[i-5];
             }
+            Peer.lastRequestMap.put(newBits[randomIndex], System.currentTimeMillis());
             return result;
         }else{
             return null; // No more new bits to get
@@ -171,6 +172,7 @@ public class MessageHandler {
             for(int i=5; i<9; i++){
                 result[i] = index[i-5];
             }
+            Peer.lastRequestMap.put(newBits[randomIndex], System.currentTimeMillis());
             return result;
         }else{
             return null; // No more new bits to get

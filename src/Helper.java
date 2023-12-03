@@ -38,12 +38,13 @@ public class Helper {
         return realBytes;
     }
 
-    //Returns a list of bits that bitfield B has that bitfield A doesn't
+    //Returns a list of bits that bitfield B has that bitfield A doesn't (accounts for outgoing requests that haven't timed out)
     public static int[] detectNewBits(BitSet a, BitSet b){
         ArrayList<Integer> tempList = new ArrayList<>();
         for(int i=0; i<b.length(); i++){
             if(a.get(i)==false && b.get(i)==true){
-                tempList.add(i);
+                if(!Peer.lastRequestMap.containsKey(i) || Peer.lastRequestMap.get(i)+Peer.requestTimeout <= System.currentTimeMillis())
+                    tempList.add(i);
             }
         }
         int[] result = tempList.stream().mapToInt(i -> i).toArray();
