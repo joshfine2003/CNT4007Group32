@@ -32,7 +32,8 @@ public class PeerInfoHandler {
         // File IO code adapted from w3schools
         // https://www.w3schools.com/java/java_files_read.asp
         try {
-            File peerInfo = new File("../project_config_file_small/PeerInfo.cfg");
+            String filename = Peer.rootPath + "PeerInfo.cfg";
+            File peerInfo = new File(filename);
             Scanner myReader = new Scanner(peerInfo);
 
             while (myReader.hasNextLine()) {

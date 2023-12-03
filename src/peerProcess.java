@@ -22,9 +22,9 @@ class peerProcess {
             Logger.deleteLog(peerID); // Delete the log
 
             // Check if the peer should have the file
-            // If not, delete the "thefile" file :))
+            // If not, delete the file :))
             if (!PeerInfoHandler.getPeerInfoMap().get(peerID).hasFile) {
-                String fileToDelete = "../project_config_file_small/" + Integer.toString(peerID) + "/thefile";
+                String fileToDelete = Peer.rootPath + Integer.toString(peerID) + "/" + ConfigHandler.commonVars.fileName;
                 Helper.deleteFile(fileToDelete);
             }
 

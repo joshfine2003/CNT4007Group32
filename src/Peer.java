@@ -19,37 +19,41 @@ import java.util.Collections;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.Iterator;
 import java.util.Set;
+import java.util.HashSet;
+import java.nio.file.*;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class Peer {
     // ignoring encapsulation for now
     int peerID;
     String hostName;
     int listeningPort;
-    boolean hasFile;
+    public static boolean hasFile;
 
     public static int optimisticNeighbor = 0;
 
+    public static ConcurrentLinkedQueue<List<byte[]>> IOQueue = new ConcurrentLinkedQueue<>();
+
     Logger logger;
+
+    public static String rootPath = "../project_config_file_smaller/";
 
     // public static List<PeerConnection> peerConnections;
     public static Map<Integer, PeerConnection> peerConnections = new ConcurrentHashMap<>(); // attempt to make thread //
                                                                                             // safe
-
     public static Map<Integer, BitSet> bitfieldMap = new ConcurrentHashMap<>(); // Keeps track of known bitmaps of other
                                                                                 // peers
     public static Map<Integer, Boolean> isInterestedMap = new ConcurrentHashMap<>(); // Keeps track of what peers
                                                                                      // are interested in this peer
-    // public static Map<Integer, Boolean> isInterestingMap = new
-    // ConcurrentHashMap<>(); // Keeps track of what
-    // neighbor peers self is
-    // interested in
     public static Map<Integer, Boolean> chokedMap = new ConcurrentHashMap<>(); // Keeps track of what peers are choked
-
     public static Map<Integer, Integer> downloadMap = new ConcurrentHashMap<>();
+    public static Map<Integer, Long> lastRequestMap = new ConcurrentHashMap<>(); // Keeps track of last time a file was
+                                                                                 // requested
+    public static Map<Integer, Boolean> completedDownloadMap = new ConcurrentHashMap<>(); // Keeps track of peers with
+                                                                                          // completed downloads
 
-    public static Map<Integer, Long> lastRequestMap = new ConcurrentHashMap<>(); // Keeps track of last time a file was requested
-
-    public static long requestTimeout = 4000; //Request timeout in milliseconds
+    public static long requestTimeout = 4000; // Request timeout in milliseconds
 
     /**
      * A handler thread class. Handlers are spawned from the listening
@@ -95,18 +99,19 @@ public class Peer {
                 Handshake receivedHandshake = new Handshake((byte[]) in.readObject());
                 int expectedPeer = getNextExpectedPeer();
                 if (receivedHandshake.verify(expectedPeer)) {
-                    Logger.logTcpConnectionFrom(this.peerID, expectedPeer);
                     System.out.println("Verified Handshake From Client " + (expectedPeer));
-                    downloadMap.put(expectedPeer, 0);
+                    Logger.logTcpConnectionFrom(this.peerID, expectedPeer);
                 } else {
                     System.out.println("Handshake failed! Expected a handshake from peerID " + expectedPeer);
                 }
 
                 PeerConnection peerConnection = new PeerConnection(connection, out, in, this.peerID, expectedPeer);
 
+                downloadMap.put(expectedPeer, 0);
                 peerConnections.put(expectedPeer, peerConnection);
                 chokedMap.put(expectedPeer, true); // Mark all neighbors initially as choked
                 isInterestedMap.put(expectedPeer, false); // Mark all neighbors initially as uninterested
+                completedDownloadMap.put(expectedPeer, false); // Mark all neighbors initially as not completed download
 
                 // Mark neighbor initially as having no bitfield
                 BitSet tempBitSet = new BitSet(ConfigHandler.commonVars.bitfieldSize);
@@ -145,6 +150,8 @@ public class Peer {
                     peerConnections.put(keyPeerID, tempPeerConnection);
                     chokedMap.put(keyPeerID, true); // Mark all neighbors initially as choked
                     isInterestedMap.put(keyPeerID, true); // Mark all neighbors initially as uninterested
+                    completedDownloadMap.put(keyPeerID, false); // Mark all neighbors initially as not completed
+                                                                // download
 
                     // Mark neighbor initially as having no bitfield
                     BitSet tempBitSet = new BitSet(ConfigHandler.commonVars.bitfieldSize);
@@ -154,8 +161,9 @@ public class Peer {
                     // Send handshake
                     Handshake sendHandshake = new Handshake(this.peerID);
                     Message handshakeMessage = new Message(sendHandshake.getBytes(), true);
-                    Logger.logTcpConnectionTo(keyPeerID, this.peerID);
+                    Logger.logTcpConnectionTo(this.peerID, keyPeerID);
                     peerConnections.get(keyPeerID).sendMessage(handshakeMessage);
+                    downloadMap.put(keyPeerID, 0);
                     tempPeerConnection.startThreads();
 
                 }
@@ -176,6 +184,31 @@ public class Peer {
         while (true) {
             long currentTime0 = System.currentTimeMillis();
             long currentTime = System.currentTimeMillis();
+
+            if(IOQueue.size() >= 1){
+                int type = Helper.byteArrayToInt(IOQueue.peek().get(0));
+                if(type == 0){
+                    readPieceFromFile(Helper.byteArrayToInt(IOQueue.peek().get(1)), Helper.byteArrayToInt(IOQueue.peek().get(2)));
+                    IOQueue.remove();
+                }
+                else if(type == 1){
+                    writePieceToFile(Helper.byteArrayToInt(IOQueue.peek().get(1)), Helper.byteArrayToInt(IOQueue.peek().get(2)), IOQueue.peek().get(3));
+                    IOQueue.remove();
+                }
+            }
+            // If all peers have completed downloads, shut it all down
+            boolean allDone = true;
+            for (int i : completedDownloadMap.keySet()) {
+                if (!completedDownloadMap.get(i)) { // If any peers are not completed downloading, keep going
+                    allDone = false;
+                }
+            }
+            if (allDone) {
+                // and peer happens
+                for (int i : peerConnections.keySet()) {
+                    // peerConnections.get(i).close();
+                }
+            }
 
             // Optimistic Unchoking
             if (currentTime0 - lastMessageTime0 >= messageInterval0) {
@@ -199,7 +232,45 @@ public class Peer {
 
             // If unchoking interval has passed, iterate through interested peers
             if (currentTime - lastMessageTime >= messageInterval) {
-                if(isInterestedMap.size() >= 1){
+                // If it has the whole file, randomly determine preferred neighbors
+                if (hasFile && isInterestedMap.size() >= 1) {
+                    List<Integer> interestedNeighbors = new ArrayList<>();
+                    Set<Integer> prefNeighbors = new HashSet<>();
+                    for (Integer i : isInterestedMap.keySet()) {
+                        if (isInterestedMap.get(i)) {
+                            interestedNeighbors.add(i);
+                        }
+                    }
+                    while (prefNeighbors.size() < ConfigHandler.commonVars.numberOfPreferredNeighbors) {
+                        if (interestedNeighbors.size() > 0) {
+                            int randNum = ThreadLocalRandom.current().nextInt(0, interestedNeighbors.size());
+                            prefNeighbors.add(interestedNeighbors.get(randNum));
+                        }
+                    }
+                    Integer[] log = prefNeighbors.toArray(new Integer[0]);
+                    Logger.logChangePreferredNeighbors(peerID, log);
+                    for (int i : prefNeighbors) {
+                        if (chokedMap.get(i)) {
+                            chokedMap.put(i, false);
+                            peerConnections.get(i).sendMessage(new Message((byte) 1));
+                        }
+                    }
+                    for (int j : chokedMap.keySet()) {
+                        if (!chokedMap.get(j)) {
+                            boolean safe = false;
+                            for (int k : prefNeighbors) {
+                                if (j == k || j == optimisticNeighbor) {
+                                    safe = true;
+                                }
+                            }
+                            if (!safe) {
+                                chokedMap.put(j, true);
+                                peerConnections.get(j).sendMessage(new Message((byte) 0));
+                            }
+                        }
+                    }
+                    // Else, use download rate to determine pref neighbors
+                } else if (isInterestedMap.size() >= 1) {
                     List<Integer> prefNeighbors = new ArrayList<>();
                     List<Integer> randomKeys = new ArrayList<>(downloadMap.keySet());
                     Collections.shuffle(randomKeys);
@@ -209,7 +280,8 @@ public class Peer {
                     }
                     // Find the preferred top neighbors
                     for (int i = 0; i < ConfigHandler.commonVars.numberOfPreferredNeighbors; i++) {
-                        int currKey = Collections.max(downloadMapRand.entrySet(), Map.Entry.comparingByValue()).getKey();
+                        int currKey = Collections.max(downloadMapRand.entrySet(), Map.Entry.comparingByValue())
+                                .getKey();
                         downloadMapRand.put(currKey, 0);
                         prefNeighbors.add(currKey);
                     }
@@ -254,7 +326,7 @@ public class Peer {
         PeerInfoHandler.PeerInfoVars peerInfo = PeerInfoHandler.getPeerInfoMap().get(this.peerID);
         this.hostName = peerInfo.hostname;
         this.listeningPort = peerInfo.port;
-        this.hasFile = peerInfo.hasFile;
+        hasFile = peerInfo.hasFile;
 
         int bitSetSize = ConfigHandler.commonVars.bitfieldSize;
         BitSet tempBitSet = new BitSet(bitSetSize);
@@ -264,6 +336,8 @@ public class Peer {
             tempBitSet.clear(0, ConfigHandler.commonVars.numPieces);
         }
         bitfieldMap.put(this.peerID, tempBitSet);
+
+        completedDownloadMap.put(this.peerID, hasFile); // Mark peer as completed or not depending on if it has a file
 
         try {
             // Start new server socket that listens on the correct port
@@ -277,6 +351,125 @@ public class Peer {
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    public static byte[] readPieceFromFile(int pieceIndex, int selfPeerID){
+        /*while(fileBeingUsed){
+            try {
+                Thread.sleep(10);
+            } catch (Exception e){
+                System.out.println(e);
+            }
+        }
+        fileBeingUsed = true;*/
+        BitSet bitfield = Peer.bitfieldMap.get(selfPeerID);
+        Logger.logStartedReading(selfPeerID, pieceIndex);
+
+        // Initialize piece data of size config piece size
+        byte[] pieceData = new byte[ConfigHandler.commonVars.pieceSize];
+        int startByteIndex = 0;
+
+        // Find spot in file to read
+        // Increment start byte index by all previous pieces
+        for(int i=0; i<pieceIndex; i++){
+            if(bitfield.get(i)==true){
+                startByteIndex += ConfigHandler.commonVars.pieceSize;
+            }
+        }
+        try {
+            File peerFile = new File(Peer.rootPath + selfPeerID + "/" + ConfigHandler.commonVars.fileName);
+            // Convert file to a byte array
+            byte[] fileContent = Helper.fileToByteArray(peerFile);
+            // Iteratively get bytes until get entire piece or reach end of file
+            for(int i=startByteIndex; i < (ConfigHandler.commonVars.pieceSize + startByteIndex) && i<fileContent.length; i++){
+                pieceData[i-startByteIndex] = fileContent[i]; // Get byte from file and insert into pieceData (starting from index 0)
+            }
+
+        } catch (Exception e) {
+            System.out.println(e);
+        }
+        //fileBeingUsed = false;
+        Logger.logStoppedReading(selfPeerID, pieceIndex);
+        boolean nullData = true; // DELETE LATER
+        for(int i=0; i<pieceData.length; i++){
+            if(pieceData[i] != 0){
+                nullData = false;
+            }
+        }
+        if(nullData){
+            System.out.println("Read all null data in piece " + pieceIndex);
+        }
+        return pieceData;
+    }
+
+    public static void writePieceToFile(int pieceIndex, int selfPeerID, byte[] pieceContent){
+        //Check if last piece, if so use size of last piece instead
+        boolean nullData = true;
+        for(int i=0; i<pieceContent.length; i++){
+            if(pieceContent[i] != 0){
+                nullData = false;
+            }
+        }
+        if(nullData){
+            System.out.println("Piece content is null for writing piece " + pieceIndex);
+        }
+        /*while(fileBeingUsed){
+            try {
+                Thread.sleep(10);
+            } catch (Exception e){
+                System.out.println(e);
+            }
+        }
+        fileBeingUsed = true;*/
+        BitSet bitfield = Peer.bitfieldMap.get(selfPeerID);
+        Peer.bitfieldMap.get(selfPeerID).set(pieceIndex, true);
+
+        Logger.logStartedWriting(selfPeerID, pieceIndex);
+        int startByteIndex = 0; // Start point initialized to 0
+        for(int i=0; i<pieceIndex; i++){ // Find start point (for each prior piece, move start cursor up to piece size)
+            if(bitfield.get(i)==true){
+                startByteIndex += ConfigHandler.commonVars.pieceSize;
+            }
+        }
+        try {
+            // Create directory if needed
+            Files.createDirectories(Paths.get(Peer.rootPath + selfPeerID));
+            // Open file (create if needed)
+            File peerFile = new File(Peer.rootPath + selfPeerID + "/" + ConfigHandler.commonVars.fileName);
+            peerFile.createNewFile();
+
+            // Content length should be the length of piece content
+            // Unless it's the last piece (should be size of last piece)
+            int contentLength = pieceContent.length;
+            if(pieceIndex == ConfigHandler.commonVars.numPieces-1){
+                contentLength = ConfigHandler.commonVars.sizeOfLastPiece;
+            }
+
+            // Convert file to byte array
+            byte[] fileContent = Helper.fileToByteArray(peerFile);
+            // New file content is loaded into a new byte array, with length of file + new piece
+            byte[] newFileContent = new byte[fileContent.length+contentLength];
+
+            // For the bytes before the start of the new piece, fill newFileContent with existing file content
+            for(int i=0; i<startByteIndex; i++){
+                newFileContent[i] = fileContent[i];
+            }
+            // Fill in next section of file then start loading the new content in
+            for(int i=0; i<contentLength; i++){
+                newFileContent[i+startByteIndex] = pieceContent[i];
+            }
+            // Fill the remainder with file content
+            for(int i=startByteIndex+contentLength; i<newFileContent.length; i++){
+                newFileContent[i] = fileContent[i-contentLength];
+            }
+            // Write byte array to file
+            Files.write(Paths.get(Peer.rootPath + selfPeerID + "/" + ConfigHandler.commonVars.fileName), newFileContent);
+
+        } catch (Exception e) {
+            System.out.println(e);
+        }
+        Logger.logStoppedWriting(selfPeerID, pieceIndex);
+        //fileBeingUsed = false;
     }
 
     // Overriding toString() method of String class

@@ -20,8 +20,7 @@ public class ConfigHandler {
         // File IO code adapted from w3schools
         // https://www.w3schools.com/java/java_files_read.asp
         try {
-            //TODO: CHANGE PATH HERE!!!
-            File common = new File("../project_config_file_small/Common.cfg");
+            File common = new File(Peer.rootPath + "Common.cfg");
             Scanner myReader = new Scanner(common);
 
             commonVars.numberOfPreferredNeighbors = Integer.parseInt(Helper.parseStringFieldFromLine(myReader.nextLine()));

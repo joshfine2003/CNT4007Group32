@@ -3,12 +3,12 @@
 del *.class
 javac ./peerProcess.java
 
-start cmd /k "java peerProcess 1001"
-start cmd /k "java peerProcess 1002"
-start cmd /k "java peerProcess 1003"
-start cmd /k "java peerProcess 1004"
-start cmd /k "java peerProcess 1005"
-start cmd /k "java peerProcess 1006"
-start cmd /k "java peerProcess 1007"
-start cmd /k "java peerProcess 1008"
-start cmd /k "java peerProcess 1009"
+start cmd /k "java peerProcess 1001 > 1001output.txt" 
+start cmd /k "java peerProcess 1002 > 1002output.txt"
+start cmd /k "java peerProcess 1003 > 1003output.txt"
+start cmd /k "java peerProcess 1004 > 1004output.txt"
+start cmd /k "java peerProcess 1005 > 1005output.txt"
+start cmd /k "java peerProcess 1006 > 1006output.txt"
+start cmd /k "java peerProcess 1007 > 1007output.txt"
+start cmd /k "java peerProcess 1008 > 1008output.txt"
+start cmd /k "java peerProcess 1009 > 1009output.txt"
