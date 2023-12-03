@@ -47,4 +47,13 @@ public class Helper {
         int[] result = tempList.stream().mapToInt(i -> i).toArray();
         return result;
     }
+
+    public static byte[] readPieceFromFile(BitSet bitfield, int pieceIndex){
+        
+        return null;
+    }
+
+    public static void writePieceToFile(BitSet bitfield, int pieceIndex, int selfPeerID, byte[] pieceContent){
+        
+    }
 }

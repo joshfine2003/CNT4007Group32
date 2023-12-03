@@ -16,6 +16,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Handler;
 import java.util.Collections;
+import java.util.concurrent.ThreadLocalRandom;
 
 public class Peer {
     // ignoring encapsulation for now
@@ -36,6 +37,10 @@ public class Peer {
                                                                                 // peers
     public static Map<Integer, Boolean> isInterestedMap = new ConcurrentHashMap<>(); // Keeps track of what peers
                                                                                      // are interested in this peer
+    // public static Map<Integer, Boolean> isInterestingMap = new
+    // ConcurrentHashMap<>(); // Keeps track of what
+    // neighbor peers self is
+    // interested in
     public static Map<Integer, Boolean> chokedMap = new ConcurrentHashMap<>(); // Keeps track of what peers are choked
 
     public static Map<Integer, Integer> downloadMap = new ConcurrentHashMap<>();
@@ -142,20 +147,69 @@ public class Peer {
 
     private void loop() {
         long lastMessageTime = System.currentTimeMillis();
+        long lastMessageTime0 = System.currentTimeMillis();
+
         long messageInterval = ConfigHandler.commonVars.unchokingInterval * 1000; // Multiply by 1000 for ms--> s
+        long messageInterval0 = ConfigHandler.commonVars.unchokingInterval * 1000;
 
         while (true) {
+            long currentTime0 = System.currentTimeMillis();
             long currentTime = System.currentTimeMillis();
 
-            // UNCHOKING ALL FOR NOW
-            // Later need to get download rate
+            //Optimistic Unchoking
+            if(currentTime0 - lastMessageTime0 >= messageInterval0){
+                List<Integer> chokedInterested = new ArrayList<>();
+                for(int i : chokedMap.keySet()){
+                    //Find all interested peers that are choked
+                    if(chokedMap.get(i) && isInterestedMap.get(i)){
+                        chokedInterested.add(i);
+                    }
+                }
+                //Pick a random peer in choked and interested to unchoke
+                if(chokedInterested.size() >= 1){
+                    int randNum = ThreadLocalRandom.current().nextInt(0, chokedInterested.size());
+                    optimisticNeighbor = chokedInterested.get(randNum);
+                    chokedMap.put(optimisticNeighbor, false);
+                    peerConnections.get(chokedInterested.get(randNum)).sendMessage(new Message((byte) 1));
+                    lastMessageTime0 = currentTime0;
+                }
+            }
+
             // If unchoking interval has passed, iterate through interested peers
             if (currentTime - lastMessageTime >= messageInterval) {
+                List<Integer> prefNeighbors = new ArrayList<>();
+
+                // Find the preferred top neighbors
+                for(int i = 0; i < ConfigHandler.commonVars.numberOfPreferredNeighbors; i++){
                     int currKey = Collections.max(downloadMap.entrySet(), Map.Entry.comparingByValue()).getKey();
                     downloadMap.put(currKey, 0);
-                    
+                    prefNeighbors.add(currKey);
                 }
-
+                // Flush the download map
+                for(int i : downloadMap.keySet()){
+                    downloadMap.put(i,0);
+                }
+                // If preferred neighbors are choked, send an unchoke message
+                for(int i = 0; i < prefNeighbors.size(); i++){
+                    if(chokedMap.get(prefNeighbors.get(i))){
+                        chokedMap.put(prefNeighbors.get(i), false);
+                        peerConnections.get(prefNeighbors.get(i)).sendMessage(new Message((byte) 1));
+                    }
+                }
+                for(int j : chokedMap.keySet()){
+                    if(!chokedMap.get(j)){
+                        boolean safe = false;
+                        for(int k = 0; k < prefNeighbors.size(); k++){
+                            if(j == prefNeighbors.get(k) || j == optimisticNeighbor){
+                                safe = true;
+                            }
+                        }
+                        if(!safe){
+                            chokedMap.put(j, true);
+                            peerConnections.get(j).sendMessage(new Message((byte) 0));
+                        }
+                    }
+                }
                 lastMessageTime = currentTime; // Update the last message time
             }
         }

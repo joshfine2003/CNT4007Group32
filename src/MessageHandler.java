@@ -138,7 +138,7 @@ public class MessageHandler {
     // Handles cases where a request message was received
     private static byte[] handleRequest(int neighbor, int neededPiece) {
         // This should reply with the actual piece, not an empty piece message
-        
+        Peer.downloadMap.put(neighbor, Peer.downloadMap.get(neighbor) + 1);
         return (new Message((byte) 7)).getBytes();
     }
 
