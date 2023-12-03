@@ -126,10 +126,8 @@ public class MessageHandler {
         }
         Message response;
         if (hasNewPiece) {
-            // Peer.isInterestingMap.put(neighbor, true); // MAYBE DELETE- Mark peer as interesting
             response = new Message((byte) 2); // Interested
         } else {
-            // Peer.isInterestingMap.put(neighbor, false); // Mark peer as not interesting :(
             response = new Message((byte) 3); // Not interested
         }
 

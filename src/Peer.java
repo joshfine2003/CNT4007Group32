@@ -33,10 +33,6 @@ public class Peer {
                                                                                 // peers
     public static Map<Integer, Boolean> isInterestedMap = new ConcurrentHashMap<>(); // Keeps track of what peers
                                                                                      // are interested in this peer
-    // public static Map<Integer, Boolean> isInterestingMap = new
-    // ConcurrentHashMap<>(); // Keeps track of what
-    // neighbor peers self is
-    // interested in
     public static Map<Integer, Boolean> chokedMap = new ConcurrentHashMap<>(); // Keeps track of what peers are choked
 
     /**

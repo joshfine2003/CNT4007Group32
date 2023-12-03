@@ -1,3 +1,4 @@
+import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.time.LocalDateTime;  
@@ -15,7 +16,7 @@ public class Logger {
             FileWriter logger = new FileWriter("../logs/log_peer_" + String.valueOf(peer1) + ".log", true); // Includes boolean to append instead of overwrite existing file
             LocalDateTime now = LocalDateTime.now();
 
-            logger.write(dtf.format(now) + ": Peer " + peer1 + " " + message);
+            logger.write(dtf.format(now) + ": Peer " + peer1 + " " + message + "\n"); // glory to newlines
             logger.close();
 
             System.out.println("Successfully logged to ../logs/log_peer_" + String.valueOf(peer1) + ".log");
@@ -24,6 +25,21 @@ public class Logger {
             System.out.println("An error occurred.");
             e.printStackTrace();
         }
+    }
+
+    // Delete code adapted from w3schools
+    // https://www.w3schools.com/java/java_files_delete.asp
+    // Delete log file
+    public static void deleteLog(int peer) {
+        try {
+            File myObj = new File("../logs/log_peer_" + String.valueOf(peer) + ".log");
+            if (myObj.exists()) {
+                myObj.delete();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
     }
 
     // Log when peer makes a TCP connection to other peer
