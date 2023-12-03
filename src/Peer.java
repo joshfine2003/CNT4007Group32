@@ -31,8 +31,12 @@ public class Peer {
 
     public static Map<Integer, BitSet> bitfieldMap = new ConcurrentHashMap<>(); // Keeps track of known bitmaps of other
                                                                                 // peers
-    public static Map<Integer, Boolean> interestedMap = new ConcurrentHashMap<>(); // Keeps track of what peers are
-                                                                                   // interested in me
+    public static Map<Integer, Boolean> isInterestedMap = new ConcurrentHashMap<>(); // Keeps track of what peers
+                                                                                     // are interested in this peer
+    // public static Map<Integer, Boolean> isInterestingMap = new
+    // ConcurrentHashMap<>(); // Keeps track of what
+    // neighbor peers self is
+    // interested in
     public static Map<Integer, Boolean> chokedMap = new ConcurrentHashMap<>(); // Keeps track of what peers are choked
 
     /**
@@ -87,6 +91,7 @@ public class Peer {
                 PeerConnection peerConnection = new PeerConnection(connection, out, in, this.peerID, expectedPeer);
 
                 peerConnections.put(expectedPeer, peerConnection);
+                chokedMap.put(expectedPeer, true); // Mark all neighbors initially as choked
                 peerConnection.startThreads();
             } catch (Exception e) {
                 e.printStackTrace();
@@ -117,6 +122,7 @@ public class Peer {
                     Socket socket = new Socket(linkedPeerInfo.hostname, linkedPeerInfo.port);
                     PeerConnection tempPeerConnection = new PeerConnection(socket, this.peerID, keyPeerID);
                     peerConnections.put(keyPeerID, tempPeerConnection);
+                    chokedMap.put(keyPeerID, true); // Mark all neighbors initially as choked
 
                     // Send handshake
                     Handshake sendHandshake = new Handshake(this.peerID);
@@ -133,8 +139,28 @@ public class Peer {
     }
 
     private void loop() {
-        while (true) {
+        long lastMessageTime = System.currentTimeMillis();
+        long messageInterval = ConfigHandler.commonVars.unchokingInterval * 1000; // Multiply by 1000 for ms--> s
 
+        while (true) {
+            long currentTime = System.currentTimeMillis();
+
+            // UNCHOKING ALL FOR NOW
+            // Later need to get download rate
+            // If unchoking interval has passed, iterate through interested peers
+            if (currentTime - lastMessageTime >= messageInterval) {
+                for (Integer neighborID : isInterestedMap.keySet()) {
+                    // If neighbor exists in choked map, is choked, and is interested, directly send unchoke
+                    if (chokedMap.get(neighborID) != null && chokedMap.get(neighborID) && isInterestedMap.get(neighborID)) {
+                        peerConnections.get(neighborID).sendMessage(new Message((byte) 1)); // Directly send unchoke to
+                                                                                            // all interested
+                        chokedMap.put(neighborID, false); // Mark neighbor as unchoked
+                    }
+
+                }
+
+                lastMessageTime = currentTime; // Update the last message time
+            }
         }
     }
 
@@ -149,7 +175,6 @@ public class Peer {
         this.hasFile = peerInfo.hasFile;
 
         int bitSetSize = ConfigHandler.commonVars.bitfieldSize;
-        // System.out.println("BIT FIELD SIZE " + bitSetSize);
         BitSet tempBitSet = new BitSet(bitSetSize);
         if (hasFile) {
             tempBitSet.set(0, ConfigHandler.commonVars.numPieces);
@@ -157,15 +182,6 @@ public class Peer {
             tempBitSet.clear(0, ConfigHandler.commonVars.numPieces);
         }
         bitfieldMap.put(this.peerID, tempBitSet);
-        
-        // byte[] printBitset = Helper.bitsetToByteArray(tempBitSet);
-
-        // System.out.println("Bitset: " + printBitset);
-        // for (byte b : printBitset) {
-        //     System.out.println(b);
-        // }
-        // System.out.println(Helper.byteArrayToInt(printBitset));
-        // System.out.println(tempBitSet);
 
         try {
             // Start new server socket that listens on the correct port
@@ -195,6 +211,6 @@ public class Peer {
                 "\n\tFile Name: " + ConfigHandler.commonVars.fileName +
                 "\n\tFile Size: " + ConfigHandler.commonVars.fileSize +
                 "\n\tPiece Size: " + ConfigHandler.commonVars.pieceSize;// +
-                // "\n\tBit Field (partial): " + Arrays.toString(partialBitField);
+        // "\n\tBit Field (partial): " + Arrays.toString(partialBitField);
     }
 }

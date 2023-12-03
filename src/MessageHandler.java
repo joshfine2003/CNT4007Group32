@@ -1,4 +1,5 @@
 import java.util.BitSet;
+import java.util.Random;
 
 public class MessageHandler {
     public static byte[] handle(byte[] messageBytes, Integer selfPeerID, int neighborPeerID) {
@@ -12,7 +13,7 @@ public class MessageHandler {
 
             case 1: // Unchoke
                 Logger.logUnchokedBy(selfPeerID, neighborPeerID);
-                return handleUnchoke(neighborPeerID);
+                return handleUnchoke(selfPeerID, neighborPeerID);
 
             case 2: // Interested
                 Logger.logReceivedInterested(selfPeerID, neighborPeerID);
@@ -61,24 +62,34 @@ public class MessageHandler {
         return null;
     }
 
-    // Handles cases where an unchoke message was received
-    private static byte[] handleUnchoke(int neighbor) {
+    //Handles cases where an unchoke message was received
+    private static byte[] handleUnchoke(int self, int neighbor){
         byte[] result = new byte[9];
         result[3] = 4;
         result[4] = 6;
-        // Fill payload with wanted piece index
+        BitSet selfBitfield = Peer.bitfieldMap.get(self);
+        BitSet neighborBitfield = Peer.bitfieldMap.get(neighbor);
+        int[] newBits = Helper.detectNewBits(selfBitfield, neighborBitfield);
+        Random rand = new Random();
+        int randomIndex = rand.nextInt(newBits.length);
+        byte[] index = Helper.intToByteArray(newBits[randomIndex]);
+        for(int i=5; i<9; i++){
+            result[i] = index[i-5];
+        }
         return result;
     }
 
     // Handles cases where an interested message was received
     private static byte[] handleInterested(int neighbor) {
         // Mark peer as interested
-        Peer.interestedMap.put(neighbor, true);
+        Peer.isInterestedMap.put(neighbor, true);
         return null;
     }
 
     // Handles cases where a not interested message was received
     private static byte[] handleNotInterested(int neighbor) {
+        Peer.isInterestedMap.put(neighbor, true);
+
         // Mark peer as not interested
         return null;
     }
@@ -115,8 +126,10 @@ public class MessageHandler {
         }
         Message response;
         if (hasNewPiece) {
+            // Peer.isInterestingMap.put(neighbor, true); // MAYBE DELETE- Mark peer as interesting
             response = new Message((byte) 2); // Interested
         } else {
+            // Peer.isInterestingMap.put(neighbor, false); // Mark peer as not interesting :(
             response = new Message((byte) 3); // Not interested
         }
 

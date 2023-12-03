@@ -44,8 +44,14 @@ public class PeerConnection {
         return new Message((byte[]) in.readObject());
     }
 
-    public void loop() {
-
+    public void sendBitField() {
+        // this is called after handshake established
+        // next step is to send bitfield (if peer ID's bitfield is not empty)
+        BitSet selfBitField = Peer.bitfieldMap.get(this.selfPeerID);
+        if (!selfBitField.isEmpty()) {
+            byte[] bitfieldMessage = Helper.bitsetToByteArray(selfBitField);
+            sendMessage(new Message(bitfieldMessage.length, (byte) 5, bitfieldMessage)); // Send Bitfield
+        }
     }
 
     public void close() {
@@ -81,16 +87,6 @@ public class PeerConnection {
         // Thread for sending messages
         Thread sendThread = new Thread(() -> {
             try {
-                // this is called after handshake established
-                // next step is to send bitfield (if peer ID's bitfield is not empty)
-                BitSet selfBitField = Peer.bitfieldMap.get(this.selfPeerID);
-                if (!selfBitField.isEmpty()) {
-                    byte[] bitfieldMessage = Helper.bitsetToByteArray(selfBitField);
-                    sendMessage(new Message(bitfieldMessage.length, (byte) 5, bitfieldMessage)); // Send Bitfield
-                }
-
-                // Conditions to send?
-                // Send
                 while (true) {
                     // Dequeue and send messages
                     Message messageToSend = messageSendQueue.take();
@@ -107,15 +103,6 @@ public class PeerConnection {
         receiveThread.start();
         sendThread.start();
 
-        // send thread send bitfield, then sleep for one second (wait for
-        // receivebitfield to fill interested/notinterested if there)
-
-        // sendThread sleep for one second
-        // if bitfield still 0, send not interested
-        // else if bitfield 1, send interested
-
-        // exchange bitfields (send it and handle response)
-        // how do I know the bitfields?
-        // exchange interested/not interested (send it and handle response)
+        sendBitField();
     }
 }
