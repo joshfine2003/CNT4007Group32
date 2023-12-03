@@ -15,6 +15,7 @@ import java.util.Scanner; // Import the Scanner class to read text files
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Handler;
+import java.util.Collections;
 
 public class Peer {
     // ignoring encapsulation for now
@@ -22,6 +23,8 @@ public class Peer {
     String hostName;
     int listeningPort;
     boolean hasFile;
+    
+    public static int optimisticNeighbor = 0;
 
     Logger logger;
 
@@ -38,6 +41,8 @@ public class Peer {
     // neighbor peers self is
     // interested in
     public static Map<Integer, Boolean> chokedMap = new ConcurrentHashMap<>(); // Keeps track of what peers are choked
+
+    public static Map<Integer, Integer> downloadMap = new ConcurrentHashMap<>();
 
     /**
      * A handler thread class. Handlers are spawned from the listening
@@ -84,6 +89,7 @@ public class Peer {
                 int expectedPeer = getNextExpectedPeer();
                 if (receivedHandshake.verify(expectedPeer)) {
                     System.out.println("Verified Handshake From Client " + (expectedPeer));
+                    downloadMap.put(expectedPeer, 0);
                 } else {
                     System.out.println("Handshake failed! Expected a handshake from peerID " + expectedPeer);
                 }
@@ -149,14 +155,9 @@ public class Peer {
             // Later need to get download rate
             // If unchoking interval has passed, iterate through interested peers
             if (currentTime - lastMessageTime >= messageInterval) {
-                for (Integer neighborID : isInterestedMap.keySet()) {
-                    // If neighbor exists in choked map, is choked, and is interested, directly send unchoke
-                    if (chokedMap.get(neighborID) != null && chokedMap.get(neighborID) && isInterestedMap.get(neighborID)) {
-                        peerConnections.get(neighborID).sendMessage(new Message((byte) 1)); // Directly send unchoke to
-                                                                                            // all interested
-                        chokedMap.put(neighborID, false); // Mark neighbor as unchoked
-                    }
-
+                    int currKey = Collections.max(downloadMap.entrySet(), Map.Entry.comparingByValue()).getKey();
+                    downloadMap.put(currKey, 0);
+                    
                 }
 
                 lastMessageTime = currentTime; // Update the last message time

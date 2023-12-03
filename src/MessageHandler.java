@@ -24,32 +24,34 @@ public class MessageHandler {
                 return handleNotInterested(neighborPeerID);
 
             case 4: // Have
-                // byte[] indexH = {payload[0], payload[1], payload[2], payload[3]};
-                // int pieceIndexH = Helper.byteArrayToInt(indexH);
-                // Logger.logReceivedHave(self.peerID, peerID, pieceIndexH);
-                // return handleHave(self, pieceIndexH);
+                byte[] indexH = {payload[0], payload[1], payload[2], payload[3]};
+                int pieceIndexH = Helper.byteArrayToInt(indexH);
+                Logger.logReceivedHave(selfPeerID, neighborPeerID, pieceIndexH);
+                return handleHave(selfPeerID, pieceIndexH);
 
             case 5: // Bitfield
                 return handleBitfield(selfPeerID, neighborPeerID, payload);
 
             case 6: // Request
-                return handleRequest(neighborPeerID);
+                byte[] pieceIndex = {payload[0], payload[1], payload[2], payload[3]};
+                return handleRequest(neighborPeerID, Helper.byteArrayToInt(pieceIndex));
 
-            // case 7: //Piece
-            // byte[] indexP = {payload[0], payload[1], payload[2], payload[3]};
-            // int pieceIndexP = Helper.byteArrayToInt(indexP);
-            // int pieceCount = 0;
-            // for(boolean hasPiece : self.bitfield){
-            // if(hasPiece){
-            // pieceCount++;
-            // }
-            // }
-            // Logger.logDownloadedPiece(selfPeerID, peerID, pieceIndexP, pieceCount);
-            // if(pieceCount ==
-            // Math.ceil((double)ConfigHandler.commonVars.fileSize/ConfigHandler.commonVars.pieceSize)){
-            // Logger.logDownloadCompleted(selfPeerID);
-            // }
-            // return handlePiece(peerID);
+            case 7: //Piece
+                byte[] indexP = {payload[0], payload[1], payload[2], payload[3]};
+                int pieceIndexP = Helper.byteArrayToInt(indexP);
+                //TODO: DOWNLOAD PIECE
+                Peer.bitfieldMap.get(selfPeerID).set(pieceIndexP, true);
+                int pieceCount = 0;
+                for(int i=0; i<ConfigHandler.commonVars.numPieces; i++){
+                    if(Peer.bitfieldMap.get(selfPeerID).get(i)){
+                        pieceCount++;
+                    }
+                }
+                Logger.logDownloadedPiece(selfPeerID, neighborPeerID, pieceIndexP, pieceCount);
+                if(pieceCount == ConfigHandler.commonVars.numPieces){
+                    Logger.logDownloadCompleted(selfPeerID);
+                }
+                return handlePiece(selfPeerID, neighborPeerID);
 
             default:
                 System.out.println("Error: Invalid type.");
@@ -88,24 +90,23 @@ public class MessageHandler {
 
     // Handles cases where a not interested message was received
     private static byte[] handleNotInterested(int neighbor) {
-        Peer.isInterestedMap.put(neighbor, true);
-
         // Mark peer as not interested
+        Peer.isInterestedMap.put(neighbor, false);
         return null;
     }
 
-    // //Handles cases where a have message was received
-    // private static byte[] handleHave(Peer self, int pieceIndex){
-    // byte[] result;
-    // if(self.bitfield[pieceIndex] == false){
-    // //Sends an interested message
-    // result = (new Message((byte)2)).getBytes();
-    // }else{
-    // //Sends a not interested message
-    // result = (new Message((byte)3)).getBytes();
-    // }
-    // return result;
-    // }
+    //Handles cases where a have message was received
+    private static byte[] handleHave(int selfPeerID, int pieceIndex){
+        byte[] result;
+        if(Peer.bitfieldMap.get(selfPeerID).get(pieceIndex) == false){
+            //Sends an interested message
+            result = (new Message((byte)2)).getBytes();
+        }else{
+            //Sends a not interested message
+            result = (new Message((byte)3)).getBytes();
+        }
+        return result;
+    }
 
     // Handles cases where a bitfield message was received
     private static byte[] handleBitfield(int self, int neighbor, byte[] payload) {
@@ -137,15 +138,24 @@ public class MessageHandler {
     }
 
     // Handles cases where a request message was received
-    private static byte[] handleRequest(int neighbor) {
+    private static byte[] handleRequest(int neighbor, int neededPiece) {
         // This should reply with the actual piece, not an empty piece message
+        
         return (new Message((byte) 7)).getBytes();
     }
 
     // Handles cases where a piece message was received
-    private static byte[] handlePiece(int neighbor) {
-        // This should reply with a new request for the next unowned piece, not an empty
-        // request message
-        return (new Message((byte) 6)).getBytes();
+    private static byte[] handlePiece(int selfPeerID, int neighborPeerID){
+        byte[] result = new byte[9];
+        result[3] = 4;
+        result[4] = 6;
+        int[] newBits = Helper.detectNewBits(Peer.bitfieldMap.get(selfPeerID), Peer.bitfieldMap.get(neighborPeerID));
+        Random rand = new Random();
+        int randomIndex = rand.nextInt(newBits.length);
+        byte[] index = Helper.intToByteArray(newBits[randomIndex]);
+        for(int i=5; i<9; i++){
+            result[i] = index[i-5];
+        }
+        return result;
     }
 }
