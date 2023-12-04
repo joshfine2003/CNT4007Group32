@@ -34,6 +34,7 @@ public class Peer {
 
     Logger logger;
 
+    //CHANGE PATH TO ROOT PATH
     public static String rootPath = "../project_config_file_large/";
 
     // public static List<PeerConnection> peerConnections;
