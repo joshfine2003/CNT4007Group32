@@ -102,7 +102,6 @@ public class Helper {
         }
         fileBeingUsed = true;
         BitSet bitfield = Peer.bitfieldMap.get(selfPeerID);
-        Logger.logStartedReading(selfPeerID, pieceIndex);
 
         // Initialize piece data of size config piece size
         byte[] pieceData = new byte[ConfigHandler.commonVars.pieceSize];
@@ -128,31 +127,12 @@ public class Helper {
             System.out.println(e);
         }
         fileBeingUsed = false;
-        Logger.logStoppedReading(selfPeerID, pieceIndex);
-        boolean nullData = true; // DELETE LATER
-        for(int i=0; i<pieceData.length; i++){
-            if(pieceData[i] != 0){
-                nullData = false;
-            }
-        }
-        if(nullData){
-            System.out.println("Read all null data in piece " + pieceIndex);
-        }
         return pieceData;
     }
 
     //Writes the given piece content to the given pieceIndex in the file
     public static synchronized boolean writePieceToFile(int pieceIndex, int selfPeerID, byte[] pieceContent){
         //Check if last piece, if so use size of last piece instead
-        boolean nullData = true;
-        for(int i=0; i<pieceContent.length; i++){
-            if(pieceContent[i] != 0){
-                nullData = false;
-            }
-        }
-        if(nullData){
-            System.out.println("Piece content is null for writing piece " + pieceIndex);
-        }
         while(fileBeingUsed){
             try {
                 Thread.sleep(10);
@@ -166,7 +146,6 @@ public class Helper {
             BitSet bitfield = Peer.bitfieldMap.get(selfPeerID);
             Peer.bitfieldMap.get(selfPeerID).set(pieceIndex, true);
 
-            Logger.logStartedWriting(selfPeerID, pieceIndex);
             int startByteIndex = 0; // Start point initialized to 0
             for(int i=0; i<pieceIndex; i++){ // Find start point (for each prior piece, move start cursor up to piece size)
                 if(bitfield.get(i)==true){
@@ -210,7 +189,6 @@ public class Helper {
             } catch (Exception e) {
                 System.out.println(e);
             }
-            Logger.logStoppedWriting(selfPeerID, pieceIndex);
             fileBeingUsed = false;
             return true;
         } else {

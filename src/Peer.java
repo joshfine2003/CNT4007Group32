@@ -22,7 +22,6 @@ import java.util.Set;
 import java.util.HashSet;
 import java.nio.file.*;
 import java.util.Queue;
-import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class Peer {
     // ignoring encapsulation for now
@@ -92,15 +91,15 @@ public class Peer {
                 ObjectOutputStream out = new ObjectOutputStream(connection.getOutputStream());
                 out.flush();
                 ObjectInputStream in = new ObjectInputStream(connection.getInputStream());
-
                 // Check handshake header and if peerID is the expected one
                 Handshake receivedHandshake = new Handshake((byte[]) in.readObject());
                 int expectedPeer = getNextExpectedPeer();
                 if (receivedHandshake.verify(expectedPeer)) {
-                    System.out.println("Verified Handshake From Client " + (expectedPeer));
+                    // System.out.println("Verified Handshake From Client " + (expectedPeer));
                     Logger.logTcpConnectionFrom(this.peerID, expectedPeer);
                 } else {
-                    System.out.println("Handshake failed! Expected a handshake from peerID " + expectedPeer);
+                    // System.out.println("Handshake failed! Expected a handshake from peerID " +
+                    // expectedPeer);
                 }
 
                 PeerConnection peerConnection = new PeerConnection(connection, out, in, this.peerID, expectedPeer);
@@ -185,16 +184,31 @@ public class Peer {
 
             // If all peers have completed downloads, shut it all down
             boolean allDone = true;
-            for (int i : completedDownloadMap.keySet()) {
-                if (!completedDownloadMap.get(i)) { // If any peers are not completed downloading, keep going
-                    allDone = false;
+
+            // If completed download map doesn't have all peers, you're not done
+            if (completedDownloadMap.size() != PeerInfoHandler.getPeerInfoMap().size()) {
+                allDone = false;
+            } else {
+                for (int i : completedDownloadMap.keySet()) {
+                    if (!completedDownloadMap.get(i)) { // If any peers are not completed downloading peer is not done
+                        allDone = false;
+                    }
                 }
             }
+
+            // for (Map.Entry<Integer, Boolean> entry : completedDownloadMap.entrySet()) {
+            //     System.out.println(entry.getKey() + ": " + entry.getValue());
+            // }
+
             if (allDone) {
-                // and peer happens
+                // wait for a second in case things are in the middle of sending before exiting
+                try {
+                    Thread.sleep(1000);
+                } catch (Exception e) {}
                 for (int i : peerConnections.keySet()) {
-                    // peerConnections.get(i).close();
+                    peerConnections.get(i).close(); // Shut all peer conenction sockets
                 }
+                System.exit(0);
             }
 
             // Optimistic Unchoking
@@ -338,125 +352,6 @@ public class Peer {
         } catch (IOException e) {
             e.printStackTrace();
         }
-    }
-
-    public static byte[] readPieceFromFile(int pieceIndex, int selfPeerID){
-        /*while(fileBeingUsed){
-            try {
-                Thread.sleep(10);
-            } catch (Exception e){
-                System.out.println(e);
-            }
-        }
-        fileBeingUsed = true;*/
-        BitSet bitfield = Peer.bitfieldMap.get(selfPeerID);
-        Logger.logStartedReading(selfPeerID, pieceIndex);
-
-        // Initialize piece data of size config piece size
-        byte[] pieceData = new byte[ConfigHandler.commonVars.pieceSize];
-        int startByteIndex = 0;
-
-        // Find spot in file to read
-        // Increment start byte index by all previous pieces
-        for(int i=0; i<pieceIndex; i++){
-            if(bitfield.get(i)==true){
-                startByteIndex += ConfigHandler.commonVars.pieceSize;
-            }
-        }
-        try {
-            File peerFile = new File(Peer.rootPath + selfPeerID + "/" + ConfigHandler.commonVars.fileName);
-            // Convert file to a byte array
-            byte[] fileContent = Helper.fileToByteArray(peerFile);
-            // Iteratively get bytes until get entire piece or reach end of file
-            for(int i=startByteIndex; i < (ConfigHandler.commonVars.pieceSize + startByteIndex) && i<fileContent.length; i++){
-                pieceData[i-startByteIndex] = fileContent[i]; // Get byte from file and insert into pieceData (starting from index 0)
-            }
-
-        } catch (Exception e) {
-            System.out.println(e);
-        }
-        //fileBeingUsed = false;
-        Logger.logStoppedReading(selfPeerID, pieceIndex);
-        boolean nullData = true; // DELETE LATER
-        for(int i=0; i<pieceData.length; i++){
-            if(pieceData[i] != 0){
-                nullData = false;
-            }
-        }
-        if(nullData){
-            System.out.println("Read all null data in piece " + pieceIndex);
-        }
-        return pieceData;
-    }
-
-    public static void writePieceToFile(int pieceIndex, int selfPeerID, byte[] pieceContent){
-        //Check if last piece, if so use size of last piece instead
-        boolean nullData = true;
-        for(int i=0; i<pieceContent.length; i++){
-            if(pieceContent[i] != 0){
-                nullData = false;
-            }
-        }
-        if(nullData){
-            System.out.println("Piece content is null for writing piece " + pieceIndex);
-        }
-        /*while(fileBeingUsed){
-            try {
-                Thread.sleep(10);
-            } catch (Exception e){
-                System.out.println(e);
-            }
-        }
-        fileBeingUsed = true;*/
-        BitSet bitfield = Peer.bitfieldMap.get(selfPeerID);
-        Peer.bitfieldMap.get(selfPeerID).set(pieceIndex, true);
-
-        Logger.logStartedWriting(selfPeerID, pieceIndex);
-        int startByteIndex = 0; // Start point initialized to 0
-        for(int i=0; i<pieceIndex; i++){ // Find start point (for each prior piece, move start cursor up to piece size)
-            if(bitfield.get(i)==true){
-                startByteIndex += ConfigHandler.commonVars.pieceSize;
-            }
-        }
-        try {
-            // Create directory if needed
-            Files.createDirectories(Paths.get(Peer.rootPath + selfPeerID));
-            // Open file (create if needed)
-            File peerFile = new File(Peer.rootPath + selfPeerID + "/" + ConfigHandler.commonVars.fileName);
-            peerFile.createNewFile();
-
-            // Content length should be the length of piece content
-            // Unless it's the last piece (should be size of last piece)
-            int contentLength = pieceContent.length;
-            if(pieceIndex == ConfigHandler.commonVars.numPieces-1){
-                contentLength = ConfigHandler.commonVars.sizeOfLastPiece;
-            }
-
-            // Convert file to byte array
-            byte[] fileContent = Helper.fileToByteArray(peerFile);
-            // New file content is loaded into a new byte array, with length of file + new piece
-            byte[] newFileContent = new byte[fileContent.length+contentLength];
-
-            // For the bytes before the start of the new piece, fill newFileContent with existing file content
-            for(int i=0; i<startByteIndex; i++){
-                newFileContent[i] = fileContent[i];
-            }
-            // Fill in next section of file then start loading the new content in
-            for(int i=0; i<contentLength; i++){
-                newFileContent[i+startByteIndex] = pieceContent[i];
-            }
-            // Fill the remainder with file content
-            for(int i=startByteIndex+contentLength; i<newFileContent.length; i++){
-                newFileContent[i] = fileContent[i-contentLength];
-            }
-            // Write byte array to file
-            Files.write(Paths.get(Peer.rootPath + selfPeerID + "/" + ConfigHandler.commonVars.fileName), newFileContent);
-
-        } catch (Exception e) {
-            System.out.println(e);
-        }
-        Logger.logStoppedWriting(selfPeerID, pieceIndex);
-        //fileBeingUsed = false;
     }
 
     // Overriding toString() method of String class

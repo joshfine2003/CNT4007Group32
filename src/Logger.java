@@ -6,8 +6,7 @@ import java.time.format.DateTimeFormatter;
 
 public class Logger {
     // Specify date time format for log files
-    // private static DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss");
-    private static DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss.SSS");
+    private static DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss");
 
     // File I/O adapted from w3schools
     // https://www.w3schools.com/java/java_files_create.asp
@@ -20,7 +19,7 @@ public class Logger {
             logger.write(dtf.format(now) + ": Peer " + peer1 + " " + message + "\n"); // glory to newlines
             logger.close();
 
-            System.out.println("Successfully logged to ../logs/log_peer_" + String.valueOf(peer1) + ".log");
+            //System.out.println("Successfully logged to ../logs/log_peer_" + String.valueOf(peer1) + ".log");
             
         } catch (IOException e) {
             System.out.println("An error occurred.");
@@ -113,26 +112,6 @@ public class Logger {
     // Log when peer downloads complete file
     public static void logDownloadCompleted(int peerID) {
         String message = "has downloaded the complete file.";
-        writeLog(peerID, message);
-    }
-
-    public static void logStartedWriting(int peerID, int pieceID) {
-        String message = "Started Writing Piece " + pieceID + ".";
-        writeLog(peerID, message);
-    }
-
-    public static void logStoppedWriting(int peerID, int pieceID) {
-        String message = "Stopped Writing Piece " + pieceID + ".";
-        writeLog(peerID, message);
-    }
-
-    public static void logStartedReading(int peerID, int pieceID) {
-        String message = "Started Reading Piece " + pieceID + ".";
-        writeLog(peerID, message);
-    }
-
-    public static void logStoppedReading(int peerID, int pieceID) {
-        String message = "Stopped Reading Piece " + pieceID + ".";
         writeLog(peerID, message);
     }
 }

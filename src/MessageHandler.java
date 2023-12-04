@@ -55,6 +55,7 @@ public class MessageHandler {
                         Logger.logDownloadedPiece(selfPeerID, neighborPeerID, pieceIndexP, pieceCount);
                         if (pieceCount == ConfigHandler.commonVars.numPieces) {
                             Peer.hasFile = true;
+                            Peer.completedDownloadMap.put(selfPeerID, true);
                             Logger.logDownloadCompleted(selfPeerID);
                         }
                     }
@@ -132,7 +133,11 @@ public class MessageHandler {
             result = (new Message((byte) 2)).getBytes();
         } else {
             // Sends a not interested message
-            result = (new Message((byte) 3)).getBytes();
+            if(Helper.detectNewBits(Peer.bitfieldMap.get(selfPeerID), Peer.bitfieldMap.get(neighborPeerID)).length == 0){
+                result = (new Message((byte) 3)).getBytes();
+            }else{
+                return null;
+            }
         }
         return result;
     }

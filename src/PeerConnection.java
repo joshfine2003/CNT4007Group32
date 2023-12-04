@@ -56,6 +56,8 @@ public class PeerConnection {
 
     public void close() {
         try {
+            out.close();
+            in.close();
             socket.close();
         } catch (IOException e) {
             e.printStackTrace();
@@ -67,22 +69,32 @@ public class PeerConnection {
         Thread receiveThread = new Thread(() -> {
             try {
                 while (true) {
-                    Message receivedMessage = receiveMessage();
+                    try {
+                        Message receivedMessage = receiveMessage();
 
-                    // Handle the received message as needed
-                    byte[] replyMessage = MessageHandler.handle(receivedMessage.getBytes(), selfPeerID, linkedPeerID);
-                    
-                    System.out.println("Received message: " + receivedMessage);
+                        // Handle the received message as needed
+                        byte[] replyMessage = MessageHandler.handle(receivedMessage.getBytes(), selfPeerID, linkedPeerID);
+                        
+                        //System.out.println("Received message: " + receivedMessage);
 
-                    if(receivedMessage.type == 7){
-                        for(Integer i : Peer.peerConnections.keySet()){
-                            byte[] havePayload = {receivedMessage.payload[0],receivedMessage.payload[1],receivedMessage.payload[2],receivedMessage.payload[3]};
-                            Peer.peerConnections.get(i).sendMessage(new Message(4,(byte)4,havePayload));
+                        if(receivedMessage.type == 7){
+                            for(Integer i : Peer.peerConnections.keySet()){
+                                byte[] havePayload = {receivedMessage.payload[0],receivedMessage.payload[1],receivedMessage.payload[2],receivedMessage.payload[3]};
+                                Peer.peerConnections.get(i).sendMessage(new Message(4,(byte)4,havePayload));
+
+                                // Check neighbor bitfields and send not interested
+                                if(Helper.detectNewBits(Peer.bitfieldMap.get(selfPeerID), Peer.bitfieldMap.get(i)).length == 0){
+                                    Peer.peerConnections.get(i).sendMessage(new Message((byte)3));
+                                }
+                            }
                         }
-                    }
-                    
-                    if (replyMessage != null) {
-                        sendMessage(new Message(replyMessage));
+                        
+                        if (replyMessage != null) {
+                            sendMessage(new Message(replyMessage));
+                        }
+                    } catch (Exception e) {
+                        //Something Went Wrong :(
+                        System.exit(0);
                     }
                 }
             } catch (Exception e) {
@@ -96,9 +108,14 @@ public class PeerConnection {
             try {
                 while (true) {
                     // Dequeue and send messages
+                    try {
                     Message messageToSend = messageSendQueue.take();
                     out.writeObject(messageToSend.getBytes());
                     out.flush();
+                    } catch (Exception e) {
+                         //Something Went Wrong :(
+                        System.exit(0);
+                    }
                 }
             } catch (Exception e) {
                 // Handle exceptions or exit the thread
