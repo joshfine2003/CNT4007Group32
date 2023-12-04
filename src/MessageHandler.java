@@ -45,17 +45,18 @@ public class MessageHandler {
                     for (int i = 0; i < pieceContent.length; i++) {
                         pieceContent[i] = payload[i + 4];
                     }
-                    Helper.writePieceToFile(pieceIndexP, selfPeerID, pieceContent);
-                    int pieceCount = 0;
-                    for (int i = 0; i < ConfigHandler.commonVars.numPieces; i++) {
-                        if (Peer.bitfieldMap.get(selfPeerID).get(i)) {
-                            pieceCount++;
+                    if (Helper.writePieceToFile(pieceIndexP, selfPeerID, pieceContent)){
+                        int pieceCount = 0;
+                        for (int i = 0; i < ConfigHandler.commonVars.numPieces; i++) {
+                            if (Peer.bitfieldMap.get(selfPeerID).get(i)) {
+                                pieceCount++;
+                            }
                         }
-                    }
-                    Logger.logDownloadedPiece(selfPeerID, neighborPeerID, pieceIndexP, pieceCount);
-                    if (pieceCount == ConfigHandler.commonVars.numPieces) {
-                        Peer.hasFile = true;
-                        Logger.logDownloadCompleted(selfPeerID);
+                        Logger.logDownloadedPiece(selfPeerID, neighborPeerID, pieceIndexP, pieceCount);
+                        if (pieceCount == ConfigHandler.commonVars.numPieces) {
+                            Peer.hasFile = true;
+                            Logger.logDownloadCompleted(selfPeerID);
+                        }
                     }
                     return handlePiece(selfPeerID, neighborPeerID);
                 } else {

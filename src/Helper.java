@@ -142,7 +142,7 @@ public class Helper {
     }
 
     //Writes the given piece content to the given pieceIndex in the file
-    public static synchronized void writePieceToFile(int pieceIndex, int selfPeerID, byte[] pieceContent){
+    public static synchronized boolean writePieceToFile(int pieceIndex, int selfPeerID, byte[] pieceContent){
         //Check if last piece, if so use size of last piece instead
         boolean nullData = true;
         for(int i=0; i<pieceContent.length; i++){
@@ -160,55 +160,61 @@ public class Helper {
                 System.out.println(e);
             }
         }
-        fileBeingUsed = true;
-        BitSet bitfield = Peer.bitfieldMap.get(selfPeerID);
-        Peer.bitfieldMap.get(selfPeerID).set(pieceIndex, true);
+        if (!Peer.bitfieldMap.get(selfPeerID).get(pieceIndex)){
+            fileBeingUsed = true;
 
-        Logger.logStartedWriting(selfPeerID, pieceIndex);
-        int startByteIndex = 0; // Start point initialized to 0
-        for(int i=0; i<pieceIndex; i++){ // Find start point (for each prior piece, move start cursor up to piece size)
-            if(bitfield.get(i)==true){
-                startByteIndex += ConfigHandler.commonVars.pieceSize;
+            BitSet bitfield = Peer.bitfieldMap.get(selfPeerID);
+            Peer.bitfieldMap.get(selfPeerID).set(pieceIndex, true);
+
+            Logger.logStartedWriting(selfPeerID, pieceIndex);
+            int startByteIndex = 0; // Start point initialized to 0
+            for(int i=0; i<pieceIndex; i++){ // Find start point (for each prior piece, move start cursor up to piece size)
+                if(bitfield.get(i)==true){
+                    startByteIndex += ConfigHandler.commonVars.pieceSize;
+                }
             }
+            try {
+                // Create directory if needed
+                Files.createDirectories(Paths.get(Peer.rootPath + selfPeerID));
+                // Open file (create if needed)
+                File peerFile = new File(Peer.rootPath + selfPeerID + "/" + ConfigHandler.commonVars.fileName);
+                peerFile.createNewFile();
+
+                // Content length should be the length of piece content
+                // Unless it's the last piece (should be size of last piece)
+                int contentLength = pieceContent.length;
+                if(pieceIndex == ConfigHandler.commonVars.numPieces-1){
+                    contentLength = ConfigHandler.commonVars.sizeOfLastPiece;
+                }
+
+                // Convert file to byte array
+                byte[] fileContent = fileToByteArray(peerFile);
+                // New file content is loaded into a new byte array, with length of file + new piece
+                byte[] newFileContent = new byte[fileContent.length+contentLength];
+
+                // For the bytes before the start of the new piece, fill newFileContent with existing file content
+                for(int i=0; i<startByteIndex; i++){
+                    newFileContent[i] = fileContent[i];
+                }
+                // Fill in next section of file then start loading the new content in
+                for(int i=0; i<contentLength; i++){
+                    newFileContent[i+startByteIndex] = pieceContent[i];
+                }
+                // Fill the remainder with file content
+                for(int i=startByteIndex+contentLength; i<newFileContent.length; i++){
+                    newFileContent[i] = fileContent[i-contentLength];
+                }
+                // Write byte array to file
+                Files.write(Paths.get(Peer.rootPath + selfPeerID + "/" + ConfigHandler.commonVars.fileName), newFileContent);
+
+            } catch (Exception e) {
+                System.out.println(e);
+            }
+            Logger.logStoppedWriting(selfPeerID, pieceIndex);
+            fileBeingUsed = false;
+            return true;
+        } else {
+            return false;
         }
-        try {
-            // Create directory if needed
-            Files.createDirectories(Paths.get(Peer.rootPath + selfPeerID));
-            // Open file (create if needed)
-            File peerFile = new File(Peer.rootPath + selfPeerID + "/" + ConfigHandler.commonVars.fileName);
-            peerFile.createNewFile();
-
-            // Content length should be the length of piece content
-            // Unless it's the last piece (should be size of last piece)
-            int contentLength = pieceContent.length;
-            if(pieceIndex == ConfigHandler.commonVars.numPieces-1){
-                contentLength = ConfigHandler.commonVars.sizeOfLastPiece;
-            }
-
-            // Convert file to byte array
-            byte[] fileContent = fileToByteArray(peerFile);
-            // New file content is loaded into a new byte array, with length of file + new piece
-            byte[] newFileContent = new byte[fileContent.length+contentLength];
-
-            // For the bytes before the start of the new piece, fill newFileContent with existing file content
-            for(int i=0; i<startByteIndex; i++){
-                newFileContent[i] = fileContent[i];
-            }
-            // Fill in next section of file then start loading the new content in
-            for(int i=0; i<contentLength; i++){
-                newFileContent[i+startByteIndex] = pieceContent[i];
-            }
-            // Fill the remainder with file content
-            for(int i=startByteIndex+contentLength; i<newFileContent.length; i++){
-                newFileContent[i] = fileContent[i-contentLength];
-            }
-            // Write byte array to file
-            Files.write(Paths.get(Peer.rootPath + selfPeerID + "/" + ConfigHandler.commonVars.fileName), newFileContent);
-
-        } catch (Exception e) {
-            System.out.println(e);
-        }
-        Logger.logStoppedWriting(selfPeerID, pieceIndex);
-        fileBeingUsed = false;
     }
 }

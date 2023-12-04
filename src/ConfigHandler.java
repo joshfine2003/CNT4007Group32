@@ -33,6 +33,9 @@ public class ConfigHandler {
             commonVars.numPieces = (int)Math.ceil((double)commonVars.fileSize/commonVars.pieceSize);
             commonVars.bitfieldSize = commonVars.numPieces + (8-commonVars.numPieces%8); //numPieces rounded up to the nearest multiple of 8 (in bits)
             commonVars.sizeOfLastPiece = commonVars.fileSize % commonVars.pieceSize;
+            if(commonVars.sizeOfLastPiece == 0){
+                commonVars.sizeOfLastPiece = commonVars.pieceSize;
+            }
 
             myReader.close();
         } catch (FileNotFoundException e) {

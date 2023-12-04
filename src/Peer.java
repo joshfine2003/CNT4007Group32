@@ -35,7 +35,7 @@ public class Peer {
 
     Logger logger;
 
-    public static String rootPath = "../project_config_file_small/";
+    public static String rootPath = "../project_config_file_large/";
 
     // public static List<PeerConnection> peerConnections;
     public static Map<Integer, PeerConnection> peerConnections = new ConcurrentHashMap<>(); // attempt to make thread //
