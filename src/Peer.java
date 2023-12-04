@@ -33,11 +33,9 @@ public class Peer {
 
     public static int optimisticNeighbor = 0;
 
-    public static ConcurrentLinkedQueue<List<byte[]>> IOQueue = new ConcurrentLinkedQueue<>();
-
     Logger logger;
 
-    public static String rootPath = "../project_config_file_smaller/";
+    public static String rootPath = "../project_config_file_small/";
 
     // public static List<PeerConnection> peerConnections;
     public static Map<Integer, PeerConnection> peerConnections = new ConcurrentHashMap<>(); // attempt to make thread //
@@ -185,17 +183,6 @@ public class Peer {
             long currentTime0 = System.currentTimeMillis();
             long currentTime = System.currentTimeMillis();
 
-            if(IOQueue.size() >= 1){
-                int type = Helper.byteArrayToInt(IOQueue.peek().get(0));
-                if(type == 0){
-                    readPieceFromFile(Helper.byteArrayToInt(IOQueue.peek().get(1)), Helper.byteArrayToInt(IOQueue.peek().get(2)));
-                    IOQueue.remove();
-                }
-                else if(type == 1){
-                    writePieceToFile(Helper.byteArrayToInt(IOQueue.peek().get(1)), Helper.byteArrayToInt(IOQueue.peek().get(2)), IOQueue.peek().get(3));
-                    IOQueue.remove();
-                }
-            }
             // If all peers have completed downloads, shut it all down
             boolean allDone = true;
             for (int i : completedDownloadMap.keySet()) {

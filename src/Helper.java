@@ -92,7 +92,7 @@ public class Helper {
     }
 
     //Reads the given pieceIndex from the file and returns the piece content
-    public static byte[] readPieceFromFile(int pieceIndex, int selfPeerID){
+    public static synchronized byte[] readPieceFromFile(int pieceIndex, int selfPeerID){
         while(fileBeingUsed){
             try {
                 Thread.sleep(10);
@@ -142,7 +142,7 @@ public class Helper {
     }
 
     //Writes the given piece content to the given pieceIndex in the file
-    public static void writePieceToFile(int pieceIndex, int selfPeerID, byte[] pieceContent){
+    public static synchronized void writePieceToFile(int pieceIndex, int selfPeerID, byte[] pieceContent){
         //Check if last piece, if so use size of last piece instead
         boolean nullData = true;
         for(int i=0; i<pieceContent.length; i++){
