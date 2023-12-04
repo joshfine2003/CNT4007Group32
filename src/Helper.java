@@ -154,7 +154,7 @@ public class Helper {
             }
             try {
                 // Create directory if needed
-                Files.createDirectories(Paths.get(Peer.rootPath + selfPeerID));
+                Files.createDirectories(Paths.get(Peer.rootPath + "peer_" + selfPeerID));
                 // Open file (create if needed)
                 File peerFile = new File(Peer.rootPath + "peer_" + selfPeerID + "/" + ConfigHandler.commonVars.fileName);
                 peerFile.createNewFile();
