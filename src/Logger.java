@@ -13,7 +13,7 @@ public class Logger {
     // Write message out to logfile
     private static void writeLog(int peer1, String message) {
         try {
-            FileWriter logger = new FileWriter("../logs/log_peer_" + String.valueOf(peer1) + ".log", true); // Includes boolean to append instead of overwrite existing file
+            FileWriter logger = new FileWriter("../peer_" + peer1 + "/log_peer_" + String.valueOf(peer1) + ".log", true); // Includes boolean to append instead of overwrite existing file
             LocalDateTime now = LocalDateTime.now();
 
             logger.write(dtf.format(now) + ": Peer " + peer1 + " " + message + "\n"); // glory to newlines
@@ -31,7 +31,7 @@ public class Logger {
     // https://www.w3schools.com/java/java_files_delete.asp
     // Delete log file
     public static void deleteLog(int peer) {
-        String fileToDelete = "../logs/log_peer_" + String.valueOf(peer) + ".log";
+        String fileToDelete = "../peer_" + peer + "/log_peer_" + String.valueOf(peer) + ".log";
         Helper.deleteFile(fileToDelete);
     }
 

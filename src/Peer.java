@@ -34,8 +34,8 @@ public class Peer {
 
     Logger logger;
 
-    //CHANGE PATH TO ROOT PATH
-    public static String rootPath = "../project_config_file_large/";
+    //Working Directory
+    public static String rootPath = "./";
 
     // public static List<PeerConnection> peerConnections;
     public static Map<Integer, PeerConnection> peerConnections = new ConcurrentHashMap<>(); // attempt to make thread //
