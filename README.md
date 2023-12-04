@@ -26,7 +26,7 @@ Device C: java peerProcess 1003
     - Main contributer of ConfigHandler.java, PeerInfoHandler.java, Helper.java
 
 ## Youtube link
-- LINK HERE
+- [LINK HERE](https://youtu.be/N9zggUHl0Ek)
 
 ## Project Overview
 The program starts by reading through configuration files to figure out information for each peer. When a peer is initialized, it sends a handshake to all previously initialized peers. After handshaking, peers exchange bitfields and corresponding interested/not interested messages. The peers then enter into a loop of sending each other information, terminating only after all peers have downloaded the entire file.
