@@ -115,7 +115,7 @@ public class Helper {
             }
         }
         try {
-            File peerFile = new File(Peer.rootPath + selfPeerID + "/" + ConfigHandler.commonVars.fileName);
+            File peerFile = new File(Peer.rootPath + "peer_" + selfPeerID + "/" + ConfigHandler.commonVars.fileName);
             // Convert file to a byte array
             byte[] fileContent = fileToByteArray(peerFile);
             // Iteratively get bytes until get entire piece or reach end of file
@@ -156,7 +156,7 @@ public class Helper {
                 // Create directory if needed
                 Files.createDirectories(Paths.get(Peer.rootPath + selfPeerID));
                 // Open file (create if needed)
-                File peerFile = new File(Peer.rootPath + selfPeerID + "/" + ConfigHandler.commonVars.fileName);
+                File peerFile = new File(Peer.rootPath + "peer_" + selfPeerID + "/" + ConfigHandler.commonVars.fileName);
                 peerFile.createNewFile();
 
                 // Content length should be the length of piece content
@@ -184,7 +184,7 @@ public class Helper {
                     newFileContent[i] = fileContent[i-contentLength];
                 }
                 // Write byte array to file
-                Files.write(Paths.get(Peer.rootPath + selfPeerID + "/" + ConfigHandler.commonVars.fileName), newFileContent);
+                Files.write(Paths.get(Peer.rootPath + "peer_" + selfPeerID + "/" + ConfigHandler.commonVars.fileName), newFileContent);
 
             } catch (Exception e) {
                 System.out.println(e);

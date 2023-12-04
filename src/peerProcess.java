@@ -16,7 +16,7 @@ class peerProcess {
         int peerID = Integer.valueOf(args[0]);
 
         // Create a log directory if it doesn't exist
-        new File("../peer_" + peerID).mkdirs();
+        new File("peer_" + peerID).mkdirs();
 
         if (PeerInfoHandler.getPeerInfoMap().containsKey(peerID)) {
             Logger.deleteLog(peerID); // Delete the log
