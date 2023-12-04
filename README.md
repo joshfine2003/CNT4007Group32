@@ -11,6 +11,7 @@ javac peerProcess.java
 
 ## Sample Execution
 ```bash
+(Common.cfg and PeerInfo.cfg are required)
 Device A: java peerProcess 1001
 Device B: java peerProcess 1002
 Device C: java peerProcess 1003
